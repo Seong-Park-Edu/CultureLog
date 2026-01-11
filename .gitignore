@@ -1,0 +1,15 @@
+# .gitignore
+
+# 1. 의존성 패키지 (너무 무거움)
+node_modules/
+bin/
+obj/
+
+# 2. 시스템 파일
+.DS_Store
+.vscode/
+
+# 3. 환경설정 파일 (비밀키가 있을 수 있음 - 나중에 Render에서 따로 설정할 것임)
+*.Development.json
+.env
+.env.local
