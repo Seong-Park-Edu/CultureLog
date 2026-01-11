@@ -762,3 +762,27 @@
         이제 내 서재에 빨간색 [삭제] 버튼을 달고, 버튼을 누르면 서버로 "지워줘!"라고 요청하게 만듭니다.
 
         **프론트엔드(CultureLog.Web)**의 App.jsx 전체를 아래 코드로 덮어씌워 주세요. (기존 코드에 handleDelete 함수와 삭제 버튼이 추가된 버전입니다.)
+
+41. 배포
+
+    1단계 git에 올리기
+        .gitignore 만들기
+        git init
+        git add .
+        git commit
+        git branch -M main
+        git remote add origin https://github.com/Seong-Park-Edu/CultureLog.git
+        git push -u origin main
+
+    2단계 백엔드 Renger에 배포하기
+        Name: culture-log-api (원하는 이름 아무거나)
+        Region: Singapore (한국이랑 가깝고 빠릅니다)
+        Branch: main (그대로 둠)
+        Root Directory: (비워둠)
+        Runtime: .NET (이걸 꼭 선택해야 합니다!) // 근데 이게 없음
+        Build Command: (기존 내용을 지우고 아래 내용을 복사하세요)
+        dotnet publish CultureLog.API -c Release -o out
+        Start Command: (기존 내용을 지우고 아래 내용을 복사하세요)
+        dotnet out/CultureLog.API.dll
+        Instance Type: Free (무료)
+        Environment Variables : 알잘딱깔센
