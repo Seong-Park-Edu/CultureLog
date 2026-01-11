@@ -837,3 +837,49 @@
         fetch(`https://culture-log-api-xxxx.onrender.com/api/Search/${query}`)
 
     GitHub에 올리기
+
+    Vercel.com 접속 -> 회원가입/로그인 (Continue with GitHub 추천).
+
+        대시보드 오른쪽 [Add New...] -> [Project] 클릭.
+
+        왼쪽 목록에 culture-log 레포지토리가 보일 겁니다. 옆에 있는 [Import] 버튼 클릭.
+
+        설정 확인 (중요!):
+
+        Framework Preset: Vite (자동으로 잡힐 겁니다.)
+
+        Root Directory: 여기가 중요합니다! [Edit] 버튼을 누르고 CultureLog.Web 폴더를 선택하세요. (프론트엔드 파일은 저 안에 있으니까요.)
+
+        [Deploy] 클릭!
+
+42. CORS 설정
+    🕵️‍♂️ 범인은 "CORS(보안 문지기)"
+        아까 백엔드(Program.cs) 코드에 이런 내용을 넣었던 것 기억나시나요? policy.WithOrigins("http://localhost:5173")
+
+        이건 "내 컴퓨터(Localhost)에서 오는 요청만 받아줘!" 라는 뜻입니다. 그래서 Vercel(https://culture-log...)에서 요청을 보내니 "너 누구야? 등록 안 된 주소인데?" 하고 문전박대(차단)를 당한 겁니다.
+
+    Program.cs 파일을 엽니다.
+    AddCors 부분과 UseCors 부분을 찾아서 아래처럼 바꿔주세요. (기존 코드를 지우고 이걸로 덮어쓰면 됩니다.)
+
+        // [1] CORS 서비스 등록 (기존 코드 교체)
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowAll", policy =>
+            {
+                policy.AllowAnyOrigin()  // "누구든지 환영해!" (Vercel 포함)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            });
+        });
+
+        // ... (중간 생략) ...
+
+        var app = builder.Build();
+
+        // ... (중간 생략) ...
+
+        // [2] CORS 정책 적용 (이름을 "AllowAll"로 맞춰주세요!)
+        app.UseCors("AllowAll"); 
+
+        app.UseHttpsRedirection(); // (참고: 아까 껐으면 주석 처리된 상태 유지)
+        app.UseAuthorization();

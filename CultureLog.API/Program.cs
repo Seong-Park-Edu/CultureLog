@@ -18,9 +18,9 @@ builder.Services.AddHttpClient();
 // 7. ▼▼▼ [중요] CORS 설정 추가: "리액트(5173)의 접근을 허용한다" ▼▼▼
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowReact", policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("http://localhost:5173") // 리액트 주소
+        policy.AllowAnyOrigin() // "누구든지 환영해!" (Vercel 포함)
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -67,7 +67,9 @@ app.UseSwaggerUI();
 
 
 // ▼▼▼ [중요] CORS 정책 적용 (순서 중요! UseAuthorization 위에 있어야 함) ▼▼▼
-app.UseCors("AllowReact");
+//app.UseCors("AllowReact"); //개발에서는 이거 사용
+app.UseCors("AllowAll");
+
 // ▲▲▲ ---------------------------------------------------------------- ▲▲▲
 
 //배포 환경에서는 주석처리
