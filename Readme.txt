@@ -822,3 +822,18 @@
 
             app.Run();
     하고 다시 push
+
+    3단계 리액트 vercel에 배포
+    내 컴퓨터가 꺼져도 작동하려면, 리액트가 Render 주소를 바라봐야 합니다.
+
+    App.jsx 파일을 엽니다.
+    파일 안에서 http://localhost:5194 라고 적힌 부분을 찾습니다. (총 4군데 정도 있을 겁니다: 검색, 저장, 목록조회, 삭제)
+
+    이걸 전부 방금 복사한 Render 주소로 바꿔주세요.
+        // [변경 전]
+        fetch(`http://localhost:5194/api/Search/${query}`)
+
+        // [변경 후]
+        fetch(`https://culture-log-api-xxxx.onrender.com/api/Search/${query}`)
+
+    GitHub에 올리기

@@ -10,7 +10,7 @@ function App() {
   const handleSearch = async () => {
     if (!query) return;
     try {
-      const response = await fetch(`http://localhost:5194/api/Search/${query}`);
+      const response = await fetch(`http://https://culturelog-api.onrender.com/api/Search/${query}`);
       const data = await response.json();
       setSearchResults(data);
     } catch (error) {
@@ -36,7 +36,7 @@ function App() {
     };
 
     try {
-      const response = await fetch('http://localhost:5194/api/Review', {
+      const response = await fetch('http://https://culturelog-api.onrender.com/api/Review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(reviewData),
@@ -58,7 +58,7 @@ function App() {
   // 3. 내 서재 목록 가져오기
   const fetchMyReviews = async () => {
     try {
-      const response = await fetch('http://localhost:5194/api/Review');
+      const response = await fetch('http://https://culturelog-api.onrender.com/api/Review');
       const data = await response.json();
       setMyReviews(data);
     } catch (error) {
@@ -72,7 +72,7 @@ function App() {
 
     try {
       // DELETE 요청 보내기 (URL 끝에 id를 붙여서 보냄)
-      const response = await fetch(`http://localhost:5194/api/Review/${id}`, {
+      const response = await fetch(`http://https://culturelog-api.onrender.com/api/Review/${id}`, {
         method: 'DELETE',
       });
 
