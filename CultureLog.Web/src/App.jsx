@@ -1,32 +1,17 @@
 import { useState, useEffect } from 'react';
-import Modal from 'react-modal'; // [NEW] 팝업창 라이브러리
-import ReactQuill from 'react-quill-new'; // [NEW] 에디터 라이브러리
-import 'react-quill-new/dist/quill.snow.css'; // [NEW] 에디터 스타일
+import Modal from 'react-modal';
+import ReactQuill from 'react-quill-new'; 
+import 'react-quill-new/dist/quill.snow.css'; 
 
-// 모달 스타일 설정 (화면 중앙 정렬)
 const customModalStyles = {
   content: {
-    top: '50%',
-    left: '50%',
-    right: 'auto',
-    bottom: 'auto',
-    marginRight: '-50%',
-    transform: 'translate(-50%, -50%)',
-    width: '90%',
-    maxWidth: '600px',
-    height: '80%',
-    borderRadius: '12px',
-    padding: '20px',
-    display: 'flex',
-    flexDirection: 'column'
+    top: '50%', left: '50%', right: 'auto', bottom: 'auto', marginRight: '-50%',
+    transform: 'translate(-50%, -50%)', width: '90%', maxWidth: '600px', height: '85%',
+    borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column'
   },
-  overlay: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)', // 배경을 어둡게
-    zIndex: 1000
-  }
+  overlay: { backgroundColor: 'rgba(0, 0, 0, 0.6)', zIndex: 1000 }
 };
 
-// 시각 장애인 보조기능을 위해 앱 요소를 지정 (필수 설정)
 Modal.setAppElement('#root');
 
 function App() {
@@ -35,40 +20,47 @@ function App() {
   const [searchResults, setSearchResults] = useState([]); 
   const [myReviews, setMyReviews] = useState([]);
 
-  // [NEW] 모달 상태 관리
-  const [isModalOpen, setIsModalOpen] = useState(false); // 모달 열림 여부
-  const [selectedItem, setSelectedItem] = useState(null); // 어떤 영화에 대해 쓰는 중인지
-  const [editorContent, setEditorContent] = useState(""); // 에디터에 쓴 내용 (HTML)
-  const [rating, setRating] = useState(5); // 별점
+  // 모달 & 에디터 상태
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false); // [NEW] 수정 모드인지 확인
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [editorContent, setEditorContent] = useState("");
+  const [rating, setRating] = useState(5);
 
-  // 1. 검색 기능 (환경변수 사용)
+  const API_URL = import.meta.env.VITE_API_URL; // 주소 줄이기
+
+  // 1. 검색
   const handleSearch = async () => {
     if (!query) return;
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/Search/${query}`);
+      const response = await fetch(`${API_URL}/api/Search/${query}`);
       const data = await response.json();
       setSearchResults(data);
-    } catch (error) {
-      alert("검색 실패!");
-    }
+    } catch (error) { alert("검색 실패!"); }
   };
 
-  // 2. [NEW] 모달 열기 (기록하기 버튼 누르면 실행)
+  // 2. 모달 열기 (새 글 작성 모드)
   const openWriteModal = (item) => {
+    setIsEditMode(false); // 수정 모드 끄기
     setSelectedItem(item);
-    setEditorContent(""); // 내용 초기화
-    setRating(5); // 별점 초기화
-    setIsModalOpen(true); // 창 열기
+    setEditorContent(""); 
+    setRating(5); 
+    setIsModalOpen(true);
   };
 
-  // 3. [NEW] 진짜 저장 기능 (모달 안에서 '저장' 눌렀을 때)
-  const handleSaveReview = async () => {
-    if (!selectedItem) return;
+  // 3. [NEW] 모달 열기 (수정 모드 - 내 서재에서 클릭 시)
+  const openEditModal = (review) => {
+    setIsEditMode(true); // 수정 모드 켜기
+    setSelectedItem(review); // 기존 리뷰 데이터를 선택된 아이템으로 설정
+    setEditorContent(review.reviewContent); // 기존 내용을 에디터에 채움!
+    setRating(review.rating); // 기존 별점 채움!
+    setIsModalOpen(true);
+  };
 
-    // 에디터 내용이 비었는지 체크 (HTML 태그 제거하고 텍스트만 확인)
+  // 4. 저장 (Create)
+  const handleSave = async () => {
     if (editorContent.replace(/<(.|\n)*?>/g, '').trim().length === 0) {
-      alert("내용을 입력해주세요!");
-      return;
+      alert("내용을 입력해주세요!"); return;
     }
 
     const reviewData = {
@@ -76,13 +68,13 @@ function App() {
       imageUrl: selectedItem.imageUrl,
       type: selectedItem.type,
       externalId: selectedItem.externalId,
-      reviewContent: editorContent, // [중요] HTML 태그가 포함된 내용을 그대로 저장
+      reviewContent: editorContent,
       rating: rating,
       isPublic: true
     };
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/Review`, {
+      const response = await fetch(`${API_URL}/api/Review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(reviewData),
@@ -90,34 +82,60 @@ function App() {
 
       if (response.ok) {
         alert("저장 완료! 📚");
-        setIsModalOpen(false); // 창 닫기
-        setActiveTab("library"); // 서재 탭으로 이동
-        fetchMyReviews(); // 목록 갱신
-      } else {
-        alert("저장 실패");
+        closeModalAndRefresh();
+      } else { alert("저장 실패"); }
+    } catch (error) { alert("에러 발생"); }
+  };
+
+  // 5. [NEW] 수정 (Update)
+  const handleUpdate = async () => {
+    if (!window.confirm("내용을 수정하시겠습니까?")) return;
+
+    const updateData = {
+        reviewContent: editorContent,
+        rating: rating
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/api/Review/${selectedItem.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData),
+        });
+
+        if (response.ok) {
+            alert("수정되었습니다! ✨");
+            closeModalAndRefresh();
+        } else { alert("수정 실패"); }
+    } catch (error) { console.error(error); }
+  };
+
+  // 6. 삭제 (Delete) - 모달 안에서 실행
+  const handleDelete = async () => {
+    if (!window.confirm("정말 이 기록을 삭제하시겠습니까?")) return;
+    try {
+      const response = await fetch(`${API_URL}/api/Review/${selectedItem.id}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        alert("삭제되었습니다. 🗑️");
+        closeModalAndRefresh();
       }
-    } catch (error) {
-      alert("에러 발생");
-    }
+    } catch (error) { console.error(error); }
+  };
+
+  // 공통: 모달 닫고 목록 갱신
+  const closeModalAndRefresh = () => {
+      setIsModalOpen(false);
+      if (activeTab === "library") fetchMyReviews(); // 서재에 있다면 목록 갱신
+      else setActiveTab("library"); // 검색 탭이었다면 서재로 이동
   };
 
   const fetchMyReviews = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/Review`);
+      const response = await fetch(`${API_URL}/api/Review`);
       const data = await response.json();
       setMyReviews(data);
-    } catch (error) {
-      console.error("서재 불러오기 실패:", error);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm("정말 삭제하시겠습니까?")) return;
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/Review/${id}`, {
-        method: 'DELETE',
-      });
-      if (response.ok) fetchMyReviews();
     } catch (error) { console.error(error); }
   };
 
@@ -147,7 +165,6 @@ function App() {
               <div key={index} style={{ border: "1px solid #eee", borderRadius: "12px", padding: "15px", textAlign: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}>
                 <img src={item.imageUrl} alt={item.title} style={{ width: "100%", height: "280px", objectFit: "cover", borderRadius: "8px", marginBottom: "15px" }} />
                 <h3 style={{ fontSize: "16px", margin: "0 0 10px", whiteSpace: "nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{item.title}</h3>
-                {/* [변경] 버튼 누르면 모달 열기 */}
                 <button onClick={() => openWriteModal(item)} style={{ width: "100%", padding: "10px", backgroundColor: "#333", color: "white", border: "none", borderRadius: "6px", cursor: "pointer" }}>기록하기 ✍️</button>
               </div>
             ))}
@@ -158,8 +175,15 @@ function App() {
       {/* 내 서재 화면 */}
       {activeTab === "library" && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px" }}>
+           {/* [변경] 카드를 클릭하면 openEditModal 실행 */}
           {myReviews.map((review) => (
-            <div key={review.id} style={{ border: "1px solid #ddd", borderRadius: "12px", padding: "20px", display: "flex", flexDirection:"column", gap: "15px", backgroundColor: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", position: "relative" }}>
+            <div 
+                key={review.id} 
+                onClick={() => openEditModal(review)} // 클릭 시 상세/수정 모달 열기
+                style={{ border: "1px solid #ddd", borderRadius: "12px", padding: "20px", display: "flex", flexDirection:"column", gap: "15px", backgroundColor: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", cursor: "pointer", transition: "transform 0.2s" }}
+                onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.02)"}
+                onMouseOut={(e) => e.currentTarget.style.transform = "scale(1.00)"}
+            >
               <div style={{display:"flex", gap:"15px"}}>
                 <img src={review.imageUrl} style={{ width: "80px", height: "120px", objectFit: "cover", borderRadius: "6px" }} />
                 <div style={{ flex: 1 }}>
@@ -169,37 +193,37 @@ function App() {
                 </div>
               </div>
               
-              {/* [중요] HTML 내용을 안전하게 보여주기 위해 dangerouslySetInnerHTML 사용 */}
+              {/* 목록에서는 미리보기로 내용의 일부만 보여주거나 텍스트만 보여줌 */}
               <div 
-                style={{ fontSize: "14px", color: "#555", lineHeight: "1.6", borderTop:"1px solid #eee", paddingTop:"10px" }}
+                style={{ fontSize: "14px", color: "#555", lineHeight: "1.6", borderTop:"1px solid #eee", paddingTop:"10px", maxHeight:"60px", overflow:"hidden", textOverflow:"ellipsis", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}
                 dangerouslySetInnerHTML={{ __html: review.reviewContent }} 
               />
-
-              <button onClick={() => handleDelete(review.id)} style={{ position: "absolute", top: "15px", right: "15px", backgroundColor: "#ff4d4d", color: "white", border: "none", borderRadius: "5px", padding: "5px 10px", cursor: "pointer", fontSize: "12px" }}>삭제</button>
             </div>
           ))}
         </div>
       )}
 
-      {/* [NEW] 글쓰기 모달 창 */}
+      {/* 통합 모달 창 (작성/수정 공용) */}
       <Modal
         isOpen={isModalOpen}
         onRequestClose={() => setIsModalOpen(false)}
         style={customModalStyles}
-        contentLabel="리뷰 작성"
+        contentLabel="리뷰 모달"
       >
         {selectedItem && (
           <>
-            <h2 style={{marginTop:0}}>✏️ '{selectedItem.title}' 기록하기</h2>
+            <div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+                <h2 style={{marginTop:0}}>
+                    {isEditMode ? "📖 기록 수정하기" : "✏️ 새 기록 남기기"}
+                </h2>
+                {/* 썸네일 작게 표시 */}
+                {isEditMode && <span style={{fontSize:"14px", color:"#888"}}>{new Date(selectedItem.createdAt).toLocaleDateString()}</span>}
+            </div>
+            <h3 style={{marginTop:0, color:"#555"}}>{selectedItem.title}</h3>
             
-            {/* 별점 선택 */}
             <div style={{marginBottom: "20px"}}>
               <label style={{fontWeight:"bold", marginRight:"10px"}}>별점:</label>
-              <select 
-                value={rating} 
-                onChange={(e) => setRating(Number(e.target.value))}
-                style={{padding:"5px", fontSize:"16px"}}
-              >
+              <select value={rating} onChange={(e) => setRating(Number(e.target.value))} style={{padding:"5px", fontSize:"16px"}}>
                 <option value="5">⭐⭐⭐⭐⭐ (5점)</option>
                 <option value="4">⭐⭐⭐⭐ (4점)</option>
                 <option value="3">⭐⭐⭐ (3점)</option>
@@ -208,21 +232,30 @@ function App() {
               </select>
             </div>
 
-            {/* 위즈위그 에디터 (ReactQuill) */}
-            <div style={{flex: 1, marginBottom: "50px"}}> {/* 에디터 공간 확보 */}
+            <div style={{flex: 1, marginBottom: "50px"}}>
               <ReactQuill 
                 theme="snow" 
                 value={editorContent} 
                 onChange={setEditorContent} 
                 style={{height: "250px"}} 
-                placeholder="자유롭게 감상평을 남겨보세요! (꾸미기 가능)"
+                placeholder="감상평을 입력하세요..."
               />
             </div>
 
-            {/* 하단 버튼 */}
+            {/* 버튼 영역: 모드에 따라 다르게 보여줌 */}
             <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "20px" }}>
               <button onClick={() => setIsModalOpen(false)} style={{ padding: "10px 20px", borderRadius: "6px", border: "1px solid #ddd", backgroundColor: "white", cursor: "pointer" }}>취소</button>
-              <button onClick={handleSaveReview} style={{ padding: "10px 20px", borderRadius: "6px", border: "none", backgroundColor: "#007AFF", color: "white", fontWeight: "bold", cursor: "pointer" }}>저장하기</button>
+              
+              {isEditMode ? (
+                // 수정 모드일 때 버튼들
+                <>
+                    <button onClick={handleDelete} style={{ padding: "10px 20px", borderRadius: "6px", border: "none", backgroundColor: "#ff4d4d", color: "white", fontWeight: "bold", cursor: "pointer" }}>삭제</button>
+                    <button onClick={handleUpdate} style={{ padding: "10px 20px", borderRadius: "6px", border: "none", backgroundColor: "#007AFF", color: "white", fontWeight: "bold", cursor: "pointer" }}>수정 완료</button>
+                </>
+              ) : (
+                // 작성 모드일 때 버튼
+                <button onClick={handleSave} style={{ padding: "10px 20px", borderRadius: "6px", border: "none", backgroundColor: "#007AFF", color: "white", fontWeight: "bold", cursor: "pointer" }}>저장하기</button>
+              )}
             </div>
           </>
         )}

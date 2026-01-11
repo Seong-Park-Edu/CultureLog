@@ -92,5 +92,31 @@ namespace CultureLog.API.Controllers
             return Ok(); // "삭제 성공!" 응답 보냄
         }
 
+        // [PUT] 감상평 수정 기능
+        // 주소예시: api/Review/5 (Body에 수정할 내용)
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateReview(long id, [FromBody] Review updatedData)
+        {
+            // 1. Supabase에서 id로 기존 글 찾기
+            var model = await _supabaseClient
+                .From<Review>()
+                .Where(x => x.Id == id)
+                .Single();
+
+            if (model == null)
+            {
+                return NotFound(); // "그런 글 없는데요?"
+            }
+
+            // 2. 내용 갈아끼우기 (별점과 내용만 수정 가능하게)
+            model.ReviewContent = updatedData.ReviewContent;
+            model.Rating = updatedData.Rating;
+
+            // 3. 저장!
+            await model.Update<Review>();
+
+            return Ok();
+        }
+
     }
 }

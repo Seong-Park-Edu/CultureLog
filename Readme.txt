@@ -1000,7 +1000,55 @@
         (CultureLog.Web)을 열고 아래 명령어를 입력
         npm install react-modal react-quill (옛날)
         npm install react-quill-new --legacy-peer-deps (이걸로 해)
-        
+
     2단계: App.jsx 전체 수정
         코드가 꽤 많이 바뀝니다. prompt를 띄우던 로직을 없애고, **"모달을 여는 기능"**과 **"모달 화면"**을 추가해야 하거든요.
 
+45. 내 서재의 카드를 클릭하면 모달창이 뜨고, 수정 가능하게 만들기
+
+    1. 백엔드 (API): "내용을 바꿔줘!"라는 수정(Update/PUT) 기능을 만들어야 합니다.
+    2. 프론트엔드 (React): 모달을 열 때 **"새 글 쓰기 모드"**인지 **"수정 모드"**인지 구분해서 버튼을 다르게 보여줘야 합니다.
+
+    1단계: 백엔드에 "수정 기능" 만들기 (ReviewController.cs)
+        창고지기에게 **"이 물건의 내용을 이걸로 바꿔줘"**라고 명령하는 기능입니다.
+        백엔드 VS Code에서 ReviewController.cs를 엽니다.
+        DeleteReview 밑에 아래 UpdateReview (PUT) 코드를 추가하세요.
+
+            // [PUT] 감상평 수정 기능
+            // 주소예시: api/Review/5 (Body에 수정할 내용)
+            [HttpPut("{id}")]
+            public async Task<IActionResult> UpdateReview(long id, [FromBody] Review updatedData)
+            {
+                // 1. Supabase에서 id로 기존 글 찾기
+                var model = await _supabaseClient
+                    .From<Review>()
+                    .Where(x => x.Id == id)
+                    .Single();
+
+                if (model == null)
+                {
+                    return NotFound(); // "그런 글 없는데요?"
+                }
+
+                // 2. 내용 갈아끼우기 (별점과 내용만 수정 가능하게)
+                model.ReviewContent = updatedData.ReviewContent;
+                model.Rating = updatedData.Rating;
+
+                // 3. 저장!
+                await model.Update<Review>();
+
+                return Ok();
+            }         
+
+    2단계: 프론트엔드 전체 수정 (App.jsx)
+        이제 프론트엔드 로직을 **"모드(작성 vs 수정)"**에 따라 작동하도록 업그레이드합니다. 코드가 꽤 바뀌니 아래 내용을 전체 덮어쓰기 해주세요.
+
+        [변경된 핵심 내용]
+
+        isEditMode: 지금 뜬 모달이 새 글 쓰는 건지(false), 수정하는 건지(true) 구분하는 상태 변수 추가.
+
+        openEditModal: 내 서재의 카드를 누르면 기존 내용을 에디터에 채워 넣고 모달을 여는 함수.
+
+        handleUpdate: [수정] 버튼을 누르면 백엔드(PUT)로 데이터를 보내는 함수.
+
+        모달 버튼: 모드에 따라 [저장] 또는 [수정][삭제] 버튼이 바뀌어서 나옵니다.
