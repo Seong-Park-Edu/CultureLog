@@ -774,7 +774,7 @@
         git remote add origin https://github.com/Seong-Park-Edu/CultureLog.git
         git push -u origin main
 
-    2단계 백엔드 Renger에 배포하기
+    2단계 백엔드 Render에 배포하기
         Name: culture-log-api (원하는 이름 아무거나)
         Region: Singapore (한국이랑 가깝고 빠릅니다)
         Branch: main (그대로 둠)
@@ -786,3 +786,20 @@
         dotnet out/CultureLog.API.dll
         Instance Type: Free (무료)
         Environment Variables : 알잘딱깔센
+
+    2단계 중 Runtime에 .net이 없어서 docker 생성함.
+        **VS Code (백엔드)**에서 **가장 바깥쪽 폴더(CultureLog)**에 새 파일을 만듭니다.
+        파일 이름: Dockerfile (확장자 없음! 그냥 Dockerfile입니다. 대소문자 중요!)
+
+    2단계 다시 Runtime을 docker로 바꿈.
+        Build Command와 Start Command 입력칸이 사라지거나 비활성화될 겁니다. (Dockerfile이 알아서 하니까요!)
+        맨 아래 [Create Web Service] 클릭!
+    
+    배포 실패 : .net 10을 했는데 8로 내려야함.
+        CultureLog.API 폴더 안에 있는 CultureLog.API.csproj 파일을 엽니다.
+
+        내용이 아래와 똑같은지 확인하고, 다르면 덮어씌우세요.
+
+        특히 <TargetFramework>net8.0</TargetFramework> 부분이 핵심입니다!
+
+        패키지 버전들도 8.x.x나 호환되는 버전이어야 합니다.
