@@ -34,5 +34,8 @@ namespace CultureLog.API.Models
 
         [Column("is_public")]
         public bool IsPublic { get; set; } = true;
+
+        [Column("user_id")]
+        public string? UserId { get; set; }
     }
 }

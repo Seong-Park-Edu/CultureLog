@@ -1052,3 +1052,120 @@
         handleUpdate: [수정] 버튼을 누르면 백엔드(PUT)로 데이터를 보내는 함수.
 
         모달 버튼: 모드에 따라 [저장] 또는 [수정][삭제] 버튼이 바뀌어서 나옵니다.
+
+46. 로그인 / 공개 비공개 / 내 서재에서도 공개 비공개 수정
+
+    이 기능을 구현하려면 3단계 공사가 필요합니다.
+
+    데이터베이스 (Supabase): "이 글은 누구 꺼?", "이 글은 비밀글?"을 저장할 칸 만들기.
+
+    백엔드 (.NET): 요청한 사람이 주인인지 확인하고, 비밀글은 주인한테만 보여주기.
+
+    프론트엔드 (React): 로그인 화면을 만들고, 글 쓸 때 '공개 여부' 체크박스 만들기.
+
+    가장 먼저 데이터베이스와 백엔드부터 손봐야 합니다.
+
+    1단계: Supabase 설정 (회원가입 기능 켜기)
+        먼저 사용자를 받을 준비를 해야 합니다.
+
+        Supabase 대시보드 접속 -> 프로젝트 선택.
+
+        왼쪽 메뉴 Authentication -> Providers 클릭.
+
+        Email을 눌러서 Enable Email을 켜고(Enable) 저장(Save)합니다.
+
+        (이제 이메일/비밀번호로 가입이 됩니다!)
+
+        왼쪽 메뉴 Table Editor -> Review 테이블 클릭.
+
+        컬럼 추가 (+ 버튼):
+
+        Name: user_id / Type: uuid (글쓴이 ID 저장용)
+
+        Name: is_public / Type: bool (공개 여부, 기본값 TRUE로 설정 추천)
+
+        Save 클릭.
+
+    2단계: 백엔드 모델 수정 (Review.cs)
+        창고지기에게 "이제 주인(UserId)이랑 공개여부(IsPublic)도 기록해야 해"라고 알려줍니다.
+
+        **백엔드(CultureLog.API)**의 Review.cs 파일을 열고 내용을 수정합니다.
+            [Column("user_id")]
+            public string? UserId { get; set; }
+
+    3단계: 백엔드 로직 수정 (ReviewController.cs)
+        이제 "목록 조회" 기능이 똑똑해져야 합니다.
+
+        기존: 무조건 다 가져와!
+
+        변경: "공개된 글" 또는 **"내가 쓴 글"**만 가져와!
+
+        **ReviewController.cs**를 열고 GetReviews 함수를 아래처럼 바꿉니다. (프론트엔드에서 userId를 쿼리로 보내줄 거라고 가정합니다.)
+            // [GET] 목록 조회 (필터링 추가)
+            // 사용법: api/Review?userId=내아이디
+            [HttpGet]
+            public async Task<IActionResult> GetReviews([FromQuery] string? userId)
+            {
+                var response = await _supabaseClient
+                    .From<Review>()
+                    .Order("created_at", Postgrest.Constants.Ordering.Descending)
+                    .Get();
+
+                var allReviews = response.Models;
+
+                // [NEW] 필터링 로직 (소프트웨어적 처리)
+                // 1. 공개(is_public = true)인 글은 누구나 봄
+                // 2. 비공개 글은 작성자(userId)가 '나'와 같을 때만 봄
+                var filteredReviews = allReviews.Where(r => 
+                    r.IsPublic == true || (userId != null && r.UserId == userId)
+                );
+
+                return Ok(filteredReviews);
+            }
+            
+            // (CreateReview랑 UpdateReview는 나중에 프론트에서 보낸 값을 그대로 저장하므로 수정 불필요)
+
+    4단계: 프론트엔드 로그인 & 체크박스 구현
+        이제 프론트엔드 작업입니다. Supabase 로그인을 돕는 도구를 설치해야 합니다.
+
+        **터미널(CultureLog.Web)**에서 설치:
+            npm install @supabase/supabase-js
+        App.jsx 전체 수정:
+
+        로그인 화면 추가
+        글 쓸 때 '공개/비공개' 체크박스 추가
+        저장할 때 user_id와 is_public 같이 보내기
+
+        코드가 깁니다. 차근차근 덮어씌워 주세요.
+
+47. supabase url, api key 환경변수에 넣기.
+    1단계: 로컬 환경 변수 설정 (.env)
+        프론트엔드 폴더(CultureLog.Web)에 있는 .env 파일을 열고, 아래 두 줄을 추가하세요. (값은 아까 복사했던 본인의 Supabase 주소와 키를 넣으세요. 따옴표 없이 넣으셔도 됩니다.)
+
+            # [NEW] Supabase 설정 추가
+            VITE_SUPABASE_URL=https://your-project-url.supabase.co
+            VITE_SUPABASE_KEY=your-anon-key-here
+
+    2단계: 코드 수정 (App.jsx)
+        이제 App.jsx에서 하드코딩된 주소를 지우고, 환경 변수를 불러오도록 고칩니다.
+
+            // [▼ 이렇게 수정하세요!]
+            const supabase = createClient(
+            import.meta.env.VITE_SUPABASE_URL,
+            import.meta.env.VITE_SUPABASE_KEY
+            );
+
+    3단계: Vercel에도 알려주기 (배포용)
+        내 컴퓨터(.env)에만 적어두면, Vercel 서버는 저 값들을 모르겠죠? Vercel 대시보드에 가서 이 값들을 등록해줘야 합니다.
+
+        Vercel 대시보드 -> culture-log 프로젝트 클릭.
+
+        Settings -> Environment Variables 메뉴 클릭.
+
+        아래 두 개를 각각 추가합니다.
+
+        Key: VITE_SUPABASE_URL / Value: (본인의 주소)
+
+        Key: VITE_SUPABASE_KEY / Value: (본인의 키)
+
+        Save 누르고 -> Deployments 탭 가서 Redeploy 하기.

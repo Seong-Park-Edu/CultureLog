@@ -50,21 +50,28 @@ namespace CultureLog.API.Controllers
             });
         }
 
-        // [GET] 내 서재 목록 조회
-        // 주소: api/Review
+        // [GET] 목록 조회 (필터링 추가)
+        // 사용법: api/Review?userId=내아이디
         [HttpGet]
-        public async Task<IActionResult> GetReviews()
+        public async Task<IActionResult> GetReviews([FromQuery] string? userId)
         {
-            // 1. Supabase에서 데이터 가져오기 (작성일 기준 최신순 정렬)
             var response = await _supabaseClient
                 .From<Review>()
                 .Order("created_at", Supabase.Postgrest.Constants.Ordering.Descending)
                 .Get();
 
-            var reviews = response.Models;
+            var allReviews = response.Models;
 
-            // 2. 안전하게 데이터 포장하기 (아까 그 에러 방지!)
-            var result = reviews.Select(r => new
+            // [NEW] 필터링 로직 (소프트웨어적 처리)
+            // 1. 공개(is_public = true)인 글은 누구나 봄
+            // 2. 비공개 글은 작성자(userId)가 '나'와 같을 때만 봄
+            var filteredReviews = allReviews.Where(r =>
+                r.IsPublic == true || (userId != null && r.UserId == userId)
+            );
+
+            // [★해결 핵심] 3. 안전한 데이터로 포장하기 (DTO 변환)
+            // Supabase의 복잡한 속성을 떼어내고 순수 데이터만 담습니다.
+            var result = filteredReviews.Select(r => new
             {
                 Id = r.Id,
                 Title = r.Title,
@@ -72,11 +79,15 @@ namespace CultureLog.API.Controllers
                 Type = r.Type,
                 ReviewContent = r.ReviewContent,
                 Rating = r.Rating,
-                CreatedAt = r.CreatedAt
+                CreatedAt = r.CreatedAt,
+                IsPublic = r.IsPublic, // [NEW] 프론트에서 자물쇠 보여주려면 필요함
+                UserId = r.UserId      // [NEW] 프론트에서 수정 권한 체크하려면 필요함
             });
 
             return Ok(result);
         }
+
+        // (CreateReview랑 UpdateReview는 나중에 프론트에서 보낸 값을 그대로 저장하므로 수정 불필요)
 
         // [DELETE] 감상문 삭제 기능
         // 주소예시: api/Review/5  <-- 5번 글을 지워라!
