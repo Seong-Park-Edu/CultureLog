@@ -18,5 +18,7 @@ namespace CultureLog.API.Models //주소지 설정: "이 파일은 CultureLog.AP
 
         // 5. 외부 ID (나중에 상세 정보를 찾기 위한 키)
         public string ExternalId { get; set; } = string.Empty;
+
+        public string Author { get; set; } = string.Empty;
     }
 }

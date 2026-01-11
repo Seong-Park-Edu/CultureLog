@@ -1214,3 +1214,103 @@
 
         App.jsx 전체 코드 업데이트
 
+51. 나의 서재와 모두의 서재에 '검색' 기능과 '필터' 기능 추가
+    백엔드를 건드릴 필요 없이, 프론트엔드(React)에서 **"이미 받아온 데이터를 화면에서만 걸러서 보여주는 방식"**으로 구현
+    🛠️ 구현 설계도
+        필터용 변수 3총사 만들기:
+
+        filterKeyword: 검색어 (예: "해리포터")
+        filterGenre: 장르 (예: "movie", "book")
+        filterRating: 별점 (예: "5")
+
+        스마트한 목록 만들기:
+
+        기존: 그냥 다 보여줌.
+        변경: 원본 데이터 → 탭 구분 → 검색어 필터 → 장르 필터 → 별점 필터 → 최종 화면
+
+        UI 추가: 서재 탭 상단에 검색창과 드롭다운(선택 상자) 배치.
+
+52. 작품의 작가도 데이터화
+    데이터베이스(창고)부터 프론트엔드(간판)까지 한 줄로 쭉 연결해줘야
+
+    1단계: Supabase에 '작가' 칸 만들기
+        창고에 물건을 넣을 공간을 먼저 만들어야 합니다.
+
+        Supabase 대시보드 -> Table Editor -> Review 테이블 클릭.
+
+        [+ New Column] 버튼 클릭.
+
+        Name: author
+
+        Type: text
+
+        Is Nullable: 체크(Null 허용) 해두는 게 좋습니다.
+
+        Save 클릭.
+
+    2단계: 백엔드 모델 수정 (Models 폴더)
+        C#에게도 "이제 작가 정보도 다룰 거야"라고 알려줍니다.
+
+        1. Review.cs 파일 수정
+
+            // [NEW] 작가/감독 정보 추가
+            [Column("author")]
+            public string? Author { get; set; }
+
+        2. SearchResponse.cs 파일 수정 
+            (검색 결과 담는 통입니다. 파일이 없다면 Services 폴더 안이나 별도로 만들었을 수 있습니다. 검색 결과 모델을 찾아서 수정해주세요.)
+
+    3단계: 백엔드 검색 로직 수정 (Services 폴더)
+        네이버(책)와 TMDB(영화)에서 정보를 가져올 때 작가 정보를 채워넣습니다. (참고: TMDB 영화 검색은 감독 정보를 바로 주지 않아서, 일단 '개봉일'을 넣도록 하겠습니다.)
+
+        1. NaverSearchService.cs
+
+            // (GetSearchResultsAsync 함수 안쪽 for문 수정)
+            results.Add(new SearchResponse
+            {
+                Title = item["title"]?.ToString().Replace("<b>", "").Replace("</b>", "") ?? "",
+                ImageUrl = item["image"]?.ToString() ?? "",
+                Type = "book",
+                ExternalId = item["isbn"]?.ToString() ?? "",
+                // [NEW] 네이버는 'author' 정보를 줍니다!
+                Author = item["author"]?.ToString() ?? "" 
+            });
+
+        2. TmdbSearchService.cs
+
+            // (GetSearchResultsAsync 함수 안쪽 for문 수정)
+            results.Add(new SearchResponse
+            {
+                Title = result["title"]?.ToString() ?? "",
+                ImageUrl = posterPath != null ? $"https://image.tmdb.org/t/p/w500{posterPath}" : "", 
+                Type = "movie",
+                ExternalId = result["id"]?.ToString() ?? "",
+                // [NEW] 영화는 '개봉일'을 작가 칸에 대신 넣습니다.
+                Author = result["release_date"]?.ToString() ?? "" 
+            });
+
+    4단계: 백엔드 저장 로직 수정 (ReviewController.cs)
+    마지막으로 프론트에서 받은 작가 정보를 DB에 저장하고, 꺼내주는 부분을 고칩니다.
+
+        1. GetReviews 함수 수정 (Select 부분)
+
+        var result = filteredReviews.Select(r => new
+        {
+            Id = r.Id,
+            Title = r.Title,
+            ImageUrl = r.ImageUrl,
+            Type = r.Type,
+            ReviewContent = r.ReviewContent,
+            Rating = r.Rating,
+            CreatedAt = r.CreatedAt,
+            IsPublic = r.IsPublic,
+            UserId = r.UserId,
+            // [NEW] 작가 정보도 꺼내주기
+            Author = r.Author 
+        });
+    
+        2. CreateReview & UpdateReview 함수는 수정 불필요 (C# 모델(Review.cs)을 고쳤으면 자동으로 FromBody에서 받아서 매핑됩니다.)
+
+    5단계: 프론트엔드 화면 수정 (App.jsx)
+        이제 카드에 작가(또는 개봉일)를 보여주면 끝입니다!
+

@@ -37,5 +37,8 @@ namespace CultureLog.API.Models
 
         [Column("user_id")]
         public string? UserId { get; set; }
+
+        [Column("author")]
+        public string? Author { get; set; }
     }
 }

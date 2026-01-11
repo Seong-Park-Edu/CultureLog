@@ -81,7 +81,8 @@ namespace CultureLog.API.Controllers
                 Rating = r.Rating,
                 CreatedAt = r.CreatedAt,
                 IsPublic = r.IsPublic, // [NEW] 프론트에서 자물쇠 보여주려면 필요함
-                UserId = r.UserId      // [NEW] 프론트에서 수정 권한 체크하려면 필요함
+                UserId = r.UserId,      // [NEW] 프론트에서 수정 권한 체크하려면 필요함
+                Author = r.Author, // [NEW] 작가 정보도 꺼내주기
             });
 
             return Ok(result);

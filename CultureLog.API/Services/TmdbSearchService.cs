@@ -56,7 +56,8 @@ namespace CultureLog.API.Services
                             : null, 
                         ReleaseDate = movie["release_date"]?.ToString(),
                         Type = "Movie",
-                        ExternalId = movie["id"]?.ToString() ?? ""
+                        ExternalId = movie["id"]?.ToString() ?? "",
+                        Author = movie["release_date"]?.ToString() ?? ""
                     };
                     results.Add(item);
                 }

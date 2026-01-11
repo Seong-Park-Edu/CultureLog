@@ -48,7 +48,8 @@ namespace CultureLog.API.Services
                         ImageUrl = book["image"]?.ToString(),
                         ReleaseDate = book["pubdate"]?.ToString(),
                         Type = "Book", // 타입은 책!
-                        ExternalId = book["isbn"]?.ToString() ?? "" // 책은 ISBN이 고유 번호
+                        ExternalId = book["isbn"]?.ToString() ?? "", // 책은 ISBN이 고유 번호
+                        Author = book["author"]?.ToString() ?? ""
                     });
                 }
             }
