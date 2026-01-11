@@ -62,18 +62,16 @@ var app = builder.Build();
 // [2] 파이프라인 설정 (손님 응대 순서)
 // ---------------------------------------------------------
 
-if (app.Environment.IsDevelopment())
-{
-    // 개발 모드일 때 Swagger 화면을 켜라
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
+
 
 // ▼▼▼ [중요] CORS 정책 적용 (순서 중요! UseAuthorization 위에 있어야 함) ▼▼▼
 app.UseCors("AllowReact");
 // ▲▲▲ ---------------------------------------------------------------- ▲▲▲
 
-app.UseHttpsRedirection();
+//배포 환경에서는 주석처리
+//app.UseHttpsRedirection();
 
 app.UseAuthorization();
 

@@ -803,3 +803,22 @@
         특히 <TargetFramework>net8.0</TargetFramework> 부분이 핵심입니다!
 
         패키지 버전들도 8.x.x나 호환되는 버전이어야 합니다.
+
+    배포는 되었지만 swagger가 보이지 않음 (개발할 때난 개발모드일 때만 보이게 해놔서)
+        Program.cs를 열고 딱 2가지만 수정
+            var app = builder.Build();
+
+            // [수정 1] Swagger를 개발환경(if문) 밖으로 꺼냅니다.
+            // (원래는 if (app.Environment.IsDevelopment()) 안에 있었죠?)
+            app.UseSwagger();
+            app.UseSwaggerUI();
+
+            // [수정 2] HTTPS 재전송 기능을 주석 처리합니다.
+            // (Render 내부에서는 HTTP 통신을 하므로 이게 켜져 있으면 에러가 납니다.)
+            // app.UseHttpsRedirection();  <-- 앞에 슬래시 두 개(//)를 넣어서 꺼주세요!
+
+            app.UseAuthorization();
+            app.MapControllers();
+
+            app.Run();
+    하고 다시 push
