@@ -959,3 +959,48 @@
 
         코드: import.meta.env.VITE_API_URL 하나로 통일!
 
+    1. 로컬 개발 (Local Development) 🏠
+
+        어디서: 내 노트북 (localhost)
+
+        무엇을: 코드를 마음껏 수정하고, 기능을 추가하고, 때로는 망가뜨려 봅니다.
+
+        특징: 여기서 에러가 나도 전 세계 사람들은 모릅니다. 나만의 안전한 실험실입니다.
+
+        백엔드 켜기: dotnet run
+
+        프론트 켜기: npm run dev
+
+    2. 검증 (Verify) ✅
+
+        브라우저(localhost:5173)에서 버튼도 눌러보고, 콘솔창(F12)에 빨간 에러가 없는지 확인합니다.
+
+        "오, 잘 된다! 이 정도면 친구들이 써도 되겠다!" 판단이 서면 다음 단계로 갑니다.
+
+    3. 배포 (Deploy / Push) 🚀
+
+        명령어: 3단 콤보 발사!
+
+        git add .
+        git commit -m "무슨무슨 기능 추가함"
+        git push
+
+    ⚠️ 딱 하나 조심할 점! (데이터베이스)
+        지금 우리는 **"Supabase(데이터베이스)"**를 하나만 만들어서 쓰고 있습니다. 즉, **내 컴퓨터(Local)**도 저 Supabase를 보고 있고, **배포된 사이트(Vercel)**도 저 Supabase를 보고 있습니다.
+
+        상황: 내 컴퓨터(localhost)에서 테스트한다고 "아이언맨" 리뷰를 삭제했습니다.
+
+        결과: 배포된 사이트(vercel.app)에서도 "아이언맨"이 사라집니다.
+
+44. 감상평을 쓰는 창을 모달로 띄워서 위즈위그 방식으로 변경하기.
+    React Modal: 팝업창을 쉽게 띄워주는 도구
+    React Quill: 글쓰기 에디터 (워드 프로세서처럼 보이는 도구)
+
+    1단계: 도구 설치하기 (터미널)
+        (CultureLog.Web)을 열고 아래 명령어를 입력
+        npm install react-modal react-quill (옛날)
+        npm install react-quill-new --legacy-peer-deps (이걸로 해)
+        
+    2단계: App.jsx 전체 수정
+        코드가 꽤 많이 바뀝니다. prompt를 띄우던 로직을 없애고, **"모달을 여는 기능"**과 **"모달 화면"**을 추가해야 하거든요.
+
