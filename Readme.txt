@@ -883,3 +883,79 @@
 
         app.UseHttpsRedirection(); // (참고: 아까 껐으면 주석 처리된 상태 유지)
         app.UseAuthorization();
+
+43. 개발할 땐 local, 운영은 vercel에
+    매번 코드를 고칠 때마다 localhost로 바꿨다가, 배포할 때는 다시 render.com 주소로 바꾸는 건 너무 귀찮고 실수하기 딱 좋죠.
+    그래서 개발자들은 **"환경 변수(Environment Variable)"**라는 마법의 스위치를 사용합니다. 이걸 세팅하면, 컴퓨터가 알아서 "어? 여긴 내 컴퓨터네? 로컬 주소 써야지", "어? 여긴 Vercel이네? 배포 주소 써야지" 하고 주소를 싹 바꿔줍니다.
+    
+    1단계: 내 컴퓨터용 주소표 만들기 (.env)
+        프론트엔드 폴더에 "내 컴퓨터에서는 이 주소를 써!"라는 비밀 쪽지를 만듭니다.
+        **VS Code(프론트엔드)**에서 CultureLog.Web 폴더 바로 안에 새 파일을 만듭니다.
+        파일 이름: .env (앞에 점 필수!)
+        아래 내용을 복사해 넣습니다.
+        VITE_API_URL=http://localhost:5194
+        (설명: 내 컴퓨터(Local)에서 실행할 때는 백엔드 주소를 localhost:5194로 쓴다는 뜻입니다.)
+
+    2단계: 코드 수정하기 (App.jsx)
+        이제 App.jsx에서 주소를 직접 적는 대신, "쪽지에 적힌 주소를 가져와!" 라고 코드를 바꿉니다.
+        App.jsx 파일을 엽니다.
+        fetch 하는 부분(4군데)을 찾아서, 주소 앞부분을 **import.meta.env.VITE_API_URL**로 교체합니다.       
+
+        // [이전 코드]
+        // fetch(`https://culture-log-api.onrender.com/api/Search/${query}`)
+
+        // [▼ 이렇게 바꾸세요!] (백틱 `` 사용 주의!)
+        fetch(`${import.meta.env.VITE_API_URL}/api/Search/${query}`)
+
+    👉 테스트: 이제 프론트엔드 터미널에서 npm run dev를 하고, 백엔드도 dotnet run으로 켜세요. 브라우저(localhost:5173)에서 잘 동작하나요? (이제 로컬끼리 통신합니다.)
+
+    3단계: Vercel에 배포용 주소 알려주기
+        내 컴퓨터 설정은 끝났습니다. 이제 Vercel에게 "네가 배포할 때는 Render 주소를 써야 해!" 라고 알려줘야 합니다.
+
+        **Vercel 대시보드**로 가서 culture-log 프로젝트를 클릭합니다.
+
+        상단 메뉴 중 [Settings] -> 왼쪽 메뉴 [Environment Variables] 클릭.
+
+        아래 내용을 입력하고 [Save] 버튼 클릭.
+
+        Key: VITE_API_URL
+
+        Value: https://culture-log-api-xxxx.onrender.com (본인의 Render 백엔드 주소, 뒤에 / 빼고!)
+
+        [Redeploy] 필요:
+
+        환경 변수를 바꿨으니 다시 배포해야 적용됩니다.
+
+        상단 [Deployments] 탭 -> 가장 최근 배포의 점 3개(...) 클릭 -> Redeploy 클릭.
+
+    🔄 완벽해진 개발 사이클
+        이제 여러분은 프로 개발자처럼 일할 수 있습니다.
+
+        1. 기능 수정 및 테스트 (Local)
+
+        내 컴퓨터에서 백엔드(dotnet run)와 프론트엔드(npm run dev)를 켭니다.
+
+        코드를 수정하고 저장하면 브라우저에서 바로 확인됩니다.
+
+        이때는 자동으로 Localhost DB와 통신하므로, 데이터를 막 지우고 테스트해도 실제 배포된 사이트에는 영향이 없습니다. (안전!)
+
+        2. 배포 (Deploy)
+
+        테스트가 끝났으면 터미널에서 3단 콤보를 날립니다.
+
+        Bash
+
+        git add .
+        git commit -m "새로운 기능 추가!"
+        git push
+        끝입니다. GitHub에 올라가는 순간 Vercel과 Render가 알아서 새 코드를 가져가서 배포합니다.
+
+        Vercel은 자동으로 https://render... 주소를 사용하도록 전환됩니다.
+
+    🚀 요약
+        내 컴퓨터: .env 파일 덕분에 localhost끼리 통신.
+
+        Vercel: 설정 메뉴의 변수 덕분에 Render와 통신.
+
+        코드: import.meta.env.VITE_API_URL 하나로 통일!
+
