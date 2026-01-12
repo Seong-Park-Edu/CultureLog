@@ -164,8 +164,35 @@ function App() {
   const closeModalAndRefresh = () => { setIsModalOpen(false); fetchReviews(); if (activeTab === "search") setActiveTab("my_library"); };
 
   // --- 렌더링 ---
-  if (!session) { /* 로그인 화면 생략 (기존 동일) */
-    return <div style={{ padding: "50px", textAlign: "center" }}><h1>🔒 로그인 필요</h1><button onClick={handleLogin}>로그인</button></div>;
+  // 1. 로그인이 안 되어 있으면 로그인 화면 보여주기 (이 부분을 복사해서 덮어쓰세요!)
+  if (!session) {
+    return (
+      <div style={{ padding: "50px", textAlign: "center", maxWidth: "400px", margin: "100px auto", border: "1px solid #ddd", borderRadius: "12px" }}>
+        <h1>🔒 로그인</h1>
+        <p style={{ marginBottom: "30px", color: "#666" }}>나만의 문화생활 기록을 시작하세요.</p>
+
+        <input
+          type="email"
+          placeholder="이메일"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={{ width: "90%", padding: "12px", marginBottom: "10px", borderRadius: "6px", border: "1px solid #ddd" }}
+        />
+
+        <input
+          type="password"
+          placeholder="비밀번호"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={{ width: "90%", padding: "12px", marginBottom: "20px", borderRadius: "6px", border: "1px solid #ddd" }}
+        />
+
+        <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+          <button onClick={handleLogin} style={{ padding: "10px 20px", backgroundColor: "#007AFF", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}>로그인</button>
+          <button onClick={handleSignUp} style={{ padding: "10px 20px", backgroundColor: "#333", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}>회원가입</button>
+        </div>
+      </div>
+    );
   }
 
   // ★ 최종적으로 화면에 보여줄 목록 (필터 적용됨)
