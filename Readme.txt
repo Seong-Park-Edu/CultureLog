@@ -1314,3 +1314,75 @@
     5단계: 프론트엔드 화면 수정 (App.jsx)
         이제 카드에 작가(또는 개봉일)를 보여주면 끝입니다!
 
+53. 파비콘, 웹 클립 아이콘 설정
+    브라우저 탭에 뜨는 작은 아이콘을 **파비콘(Favicon)**이라고 하고, 핸드폰 홈 화면에 추가할 때 뜨는 아이콘을 **웹 클립 아이콘(Web Clip Icon)**이라고 합니다.
+        1단계: 이미지 준비하기 (public 폴더)
+            가장 먼저, 앱의 로고로 쓸 **정사각형 이미지(PNG)**가 필요합니다. (배경이 투명하면 더 좋지만, 꽉 찬 네모 이미지라도 괜찮습니다.)
+
+            이미지 파일 준비: 사용할 이미지를 구해서 파일 이름을 **icon.png**로 바꿉니다. (크기는 512x512 픽셀 이상 권장)
+
+            파일 넣기: 프론트엔드 프로젝트(CultureLog.Web) 안에 있는 public 폴더에 이 icon.png를 넣어주세요.
+
+            (기존에 있던 vite.svg 같은 건 지워도 됩니다.)
+
+            위치: CultureLog.Web/public/icon.png    
+
+        2단계: 브라우저 & 아이폰 설정 (index.html)
+            이제 브라우저 탭과 아이폰에게 "이 이미지를 써!"라고 알려줍니다.
+
+            index.html 파일을 열고 <head> 태그 안쪽을 아래 내용으로 수정(또는 추가)해주세요. (기존에 <link rel="icon" ...>이 있다면 지우고 이걸로 덮어쓰세요.)
+
+            HTML
+
+            <head>
+            <meta charset="UTF-8" />
+            
+            <link rel="icon" type="image/png" href="/icon.png" />
+            
+            <link rel="apple-touch-icon" href="/icon.png" />
+            
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>내 문화생활 기록장</title>
+            </head>
+
+        3단계: 안드로이드 & 앱 설정 (manifest.json)
+            안드로이드 폰에서 "홈 화면에 추가"를 했을 때, 이름과 아이콘이 예쁘게 나오려면 **매니페스트(Manifest)**라는 명찰이 필요합니다.
+
+            public 폴더 안에 새 파일을 만듭니다.
+
+            파일 이름: manifest.json
+
+            아래 내용을 복사해서 붙여넣으세요.
+
+            JSON
+
+            {
+            "short_name": "문화기록",
+            "name": "내 문화생활 기록장",
+            "icons": [
+                {
+                "src": "/icon.png",
+                "type": "image/png",
+                "sizes": "192x192 512x512"
+                }
+            ],
+            "start_url": ".",
+            "display": "standalone",
+            "theme_color": "#ffffff",
+            "background_color": "#ffffff"
+            }
+            short_name: 홈 화면 아이콘 밑에 나올 짧은 이름.
+
+            display: "standalone": 이 앱을 켜면 브라우저 주소창(URL바)이 사라지고 진짜 앱처럼 전체 화면으로 뜹니다!
+
+        4단계: 매니페스트 연결 (index.html)
+            마지막으로 index.html에게 방금 만든 명찰(manifest.json)을 연결해줍니다.
+
+            다시 **index.html**의 <head> 태그 안에 아래 한 줄을 추가하세요.
+
+            HTML
+
+            <head>
+            <link rel="manifest" href="/manifest.json" />
+            
+            </head>

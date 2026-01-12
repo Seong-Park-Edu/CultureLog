@@ -200,7 +200,7 @@ function App() {
 
   return (
     <div style={{ padding: "20px", maxWidth: "800px", margin: "0 auto", fontFamily: "sans-serif", paddingBottom: "100px" }}>
-      <h1 style={{ textAlign: "center", color: "#333", marginBottom: "30px" }}>🎬 내 문화생활 기록장</h1>
+      <h1 style={{ textAlign: "center", color: "#333", marginBottom: "30px" }}>🎬 Culture Logs</h1>
 
       <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginBottom: "30px" }}>
         {["search", "public_library", "my_library"].map(tab => (
