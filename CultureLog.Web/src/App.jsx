@@ -258,14 +258,82 @@ function App() {
     const reviewData = { title: selectedItem.title, imageUrl: selectedItem.imageUrl, type: selectedItem.type, externalId: selectedItem.externalId, reviewContent: editorContent, rating: rating, isPublic: isPublic, userId: session?.user?.id, author: selectedItem.author || "" };
     await sendRequest(`${API_URL}/api/Review`, 'POST', reviewData, "저장 완료!");
   };
-  const handleUpdate = async () => { /* 내용 생략 (기존 동일) */
+  // [수정] 수정 함수 (서버 연동 후 로컬 상태만 업데이트)
+  const handleUpdate = async () => {
+    if (!selectedItem) return;
     if (!window.confirm("수정하시겠습니까?")) return;
-    const updateData = { reviewContent: editorContent, rating: rating, isPublic: isPublic, userId: session?.user?.id };
-    await sendRequest(`${API_URL}/api/Review/${selectedItem.id}`, 'PUT', updateData, "수정 완료!");
+
+    // 1. 수정할 데이터 준비
+    const updateData = {
+      reviewContent: editorContent,
+      rating: rating,
+      isPublic: isPublic,
+      userId: session?.user?.id
+    };
+
+    try {
+      // 2. 서버에 PUT 요청 (sendRequest 대신 직접 fetch 사용)
+      const response = await fetch(`${API_URL}/api/Review/${selectedItem.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      if (response.ok) {
+        alert("수정 완료!");
+
+        // 3. [핵심] 목록(allReviews)에서 해당 아이템만 찾아서 내용 교체!
+        setAllReviews(prev => prev.map(review => {
+          // 아이디가 같은 녀석을 찾으면?
+          if (review.id === selectedItem.id) {
+            // 기존 정보(...review)에 변경된 정보(updateData)를 덮어씌워서 반환
+            return { ...review, ...updateData };
+          }
+          // 다른 녀석들은 건드리지 말고 그대로 반환
+          return review;
+        }));
+
+        // 4. 모달 닫기
+        setIsModalOpen(false);
+        setSelectedItem(null);
+
+      } else {
+        alert("수정 실패: 서버 오류");
+      }
+    } catch (error) {
+      console.error("수정 중 에러 발생:", error);
+      alert("에러가 발생했습니다.");
+    }
   };
-  const handleDelete = async () => { /* 내용 생략 (기존 동일) */
-    if (!window.confirm("삭제하시겠습니까?")) return;
-    try { const response = await fetch(`${API_URL}/api/Review/${selectedItem.id}`, { method: 'DELETE' }); if (response.ok) { alert("삭제됨"); closeModalAndRefresh(); } } catch (error) { console.error(error); }
+  // [수정] 삭제 함수 (변수명 수정 완료: setAllReviews)
+  const handleDelete = async () => {
+    if (!selectedItem) return;
+    if (!window.confirm("정말 삭제하시겠습니까? 복구할 수 없습니다.")) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/Review/${selectedItem.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        alert("삭제되었습니다.");
+
+        // 1. [핵심] 여기서 setAllReviews를 써야 합니다! (기존 allReviews 목록에서 제거)
+        setAllReviews(prev => prev.filter(review => review.id !== selectedItem.id));
+
+        // 2. 모달 닫기 및 초기화
+        setIsModalOpen(false);
+        setSelectedItem(null);
+
+      } else {
+        alert("삭제 실패: 서버 오류");
+      }
+    } catch (error) {
+      console.error("삭제 중 에러 발생:", error);
+      alert("에러가 발생했습니다.");
+    }
   };
 
   // 댓글 목록 가져오기
