@@ -1386,3 +1386,94 @@
             <link rel="manifest" href="/manifest.json" />
             
             </head>
+
+54. 게임 검색도 추가
+    게임 (Game): RAWG.io라는 무료 API를 사용
+
+    1. RawgSearchService.cs 파일 생성 (Services 폴더)
+    2. Program.cs에 서비스 등록
+        // (기존 서비스 등록 코드 밑에 추가)
+        builder.Services.AddHttpClient<RawgSearchService>(); (기존 인터페이스 방식 버림)
+    3. 백엔드 - 컨트롤러 업그레이드 (SearchController.cs)
+        enumable로 인터페이스 받는 거에서 각각 받는 거로 수정
+
+    4. 프론트엔드 - 카테고리 선택 버튼 만들기 (App.jsx)
+        // [NEW] 검색 카테고리 상태 (기본값: 영화)
+            const [searchCategory, setSearchCategory] = useState("movie");
+
+        // 주소 뒤에 ?category=... 붙이기
+            const response = await fetch(`${API_URL}/api/Search/${query}?category=${searchCategory}`);
+        
+        // [UI 헬퍼] 카테고리별 이모지/이름
+            const getCategoryLabel = (type) => {
+                switch(type) {
+                    case 'movie': return '🎬 영화';
+                    case 'book': return '📚 도서';
+                    case 'webtoon': return '📱 웹툰';
+                    case 'game': return '🎮 게임';
+                    default: return type;
+                }
+            };
+        
+        // return 부분 수정
+
+        이외 더 수정
+
+55. 검색 필터링
+
+    프론트 코드 바꿈
+
+        // [NEW] ★ 핵심 로직: 현재 탭과 필터 조건에 맞는 목록만 걸러내기
+        const getFilteredReviews = () => {
+            // 1. 탭 구분 (모두의 서재 vs 내 서재)
+            let filtered = activeTab === "public_library"
+            ? allReviews.filter(r => r.isPublic === true)
+            : allReviews.filter(r => r.userId === session.user.id);
+
+            // 2. 검색어 필터 (제목이나 내용에 포함되어 있으면 통과)
+            if (filterKeyword) {
+            const lowerKeyword = filterKeyword.toLowerCase();
+            filtered = filtered.filter(r =>
+                r.title.toLowerCase().includes(lowerKeyword) ||
+                r.reviewContent.toLowerCase().includes(lowerKeyword)
+            );
+            }
+
+            // 3. 장르 필터
+            if (filterGenre !== "All") {
+            filtered = filtered.filter(r => r.type === filterGenre);
+            }
+
+            // 4. 별점 필터
+            if (filterRating !== "All") {
+            filtered = filtered.filter(r => r.rating === Number(filterRating));
+            }
+
+            return filtered;
+        };
+
+        // [NEW] 화면에 보여줄 때만 필터링하는 함수
+        const getDisplaySearchResults = () => {
+            if (activeFilter === "all") return searchResults;
+
+            return searchResults.filter(item => {
+            // [여기 수정] 안전하게 소문자로 변환해서 비교
+            const itemType = (item.type || item.Type || "").toLowerCase();
+            return itemType === activeFilter.toLowerCase();
+            });
+        };
+
+        // [UI 헬퍼] 카테고리별 라벨
+        const getCategoryLabel = (type) => {
+            switch (type) {
+            case 'all': return '🌈 전체';
+            case 'movie': return '🎬 영화';
+            case 'book': return '📚 도서';
+            case 'webtoon': return '📱 웹툰'; // (참고: 네이버 API는 기본적으로 book으로 옴)
+            case 'game': return '🎮 게임';
+            default: return type;
+            }
+        };
+
+
+

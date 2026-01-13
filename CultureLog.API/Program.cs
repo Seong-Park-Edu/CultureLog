@@ -49,11 +49,24 @@ builder.Services.AddScoped<Supabase.Client>(provider =>
 });
 // ▲▲▲ ----------------------- ▲▲▲
 
-// 4. 우리가 만든 검색 일꾼(Service) 등록
-builder.Services.AddScoped<ISearchService, TmdbSearchService>();
+// // 4. 우리가 만든 검색 일꾼(Service) 등록
+// builder.Services.AddScoped<ISearchService, TmdbSearchService>();
 
-// 5. 새로운 네이버 일꾼도 등록!
-builder.Services.AddScoped<ISearchService, NaverSearchService>();
+// // 5. 새로운 네이버 일꾼도 등록!
+// builder.Services.AddScoped<ISearchService, NaverSearchService>();
+
+// // 7. 새로운 RAWG 일꾼도 등록!
+// builder.Services.AddScoped<ISearchService, RawgSearchService>();
+
+// 4. TMDB (영화)
+builder.Services.AddHttpClient<TmdbSearchService>();
+
+// 5. Naver (도서/웹툰)
+builder.Services.AddHttpClient<NaverSearchService>();
+
+// 7. RAWG (게임)
+builder.Services.AddHttpClient<RawgSearchService>();
+
 
 // ---------------------------------------------------------
 

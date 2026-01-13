@@ -35,6 +35,12 @@ function App() {
   const [filterGenre, setFilterGenre] = useState("All");  // 장르
   const [filterRating, setFilterRating] = useState("All"); // 별점
 
+  // [NEW] 검색 카테고리 상태 (기본값: 영화)
+  const [searchCategory, setSearchCategory] = useState("movie");
+
+  // [이름 변경] searchCategory -> activeFilter (이제 검색용이 아니라 필터용이니까요!)
+  const [activeFilter, setActiveFilter] = useState("all");
+
   // 모달 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -69,12 +75,21 @@ function App() {
   };
 
   // API 검색 (외부)
+  // 1. 검색 함수 (무조건 category='all'로 요청)
   const handleSearch = async () => {
     if (!query) return;
     try {
-      const response = await fetch(`${API_URL}/api/Search/${query}`);
+      // [변경] 카테고리 상관없이 일단 "all"로 다 가져와!
+      const response = await fetch(`${API_URL}/api/Search/${query}?category=all`);
       const data = await response.json();
+
+      // [꿀팁] 웹툰은 책이랑 같이 오니까, 제목에 '만화'가 있거나 하면 강제로 type을 바꿔주는 센스 (선택사항)
+      // 여기서는 백엔드가 준 그대로 씁니다.
       setSearchResults(data);
+
+      // 검색 후 필터는 '전체(all)'로 초기화해주면 좋음
+      setActiveFilter("all");
+
     } catch (error) { alert("검색 실패!"); }
   };
 
@@ -132,6 +147,32 @@ function App() {
     const genres = allReviews.map(r => r.type).filter(t => t); // null 제외
     return ["All", ...new Set(genres)]; // 중복 제거
   };
+
+  // [NEW] 화면에 보여줄 때만 필터링하는 함수
+  const getDisplaySearchResults = () => {
+    if (activeFilter === "all") return searchResults;
+
+    return searchResults.filter(item => {
+      // [여기 수정] 안전하게 소문자로 변환해서 비교
+      const itemType = (item.type || item.Type || "").toLowerCase();
+      return itemType === activeFilter.toLowerCase();
+    });
+  };
+
+  // [UI 헬퍼] 카테고리별 라벨
+  const getCategoryLabel = (type) => {
+    switch (type) {
+      case 'all': return '🌈 전체';
+      case 'movie': return '🎬 영화';
+      case 'book': return '📚 도서';
+      case 'webtoon': return '📱 웹툰'; // (참고: 네이버 API는 기본적으로 book으로 옴)
+      case 'game': return '🎮 게임';
+      default: return type;
+    }
+  };
+
+  // 보여줄 목록 계산
+  const finalDisplayList = getDisplaySearchResults();
 
   // --- 기존 모달 및 API 로직들 (변경 없음) ---
   const openWriteModal = (item) => {
@@ -216,17 +257,58 @@ function App() {
       {/* 1. API 검색 화면 */}
       {activeTab === "search" && (
         <>
-          <div style={{ display: "flex", gap: "10px", marginBottom: "30px" }}>
-            <input type="text" placeholder="제목 검색..." value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} style={{ padding: "12px", flex: 1, fontSize: "16px", borderRadius: "8px", border: "1px solid #ddd" }} />
+          {/* 검색창 (카테고리 선택 없이 바로 검색) */}
+          <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+            <input
+              type="text"
+              placeholder="영화, 책, 게임 제목을 검색해보세요..." // 문구 변경
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              style={{ padding: "12px", flex: 1, fontSize: "16px", borderRadius: "8px", border: "1px solid #ddd" }}
+            />
             <button onClick={handleSearch} style={{ padding: "12px 24px", backgroundColor: "#333", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>검색</button>
           </div>
+
+          {/* [위치 변경] 검색 결과가 있을 때만 필터 탭 보여주기 */}
+          {searchResults.length > 0 && (
+            <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginBottom: "20px" }}>
+              {['all', 'movie', 'book', 'game'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveFilter(cat)} // 클릭하면 필터만 변경 (API 요청 X)
+                  style={{
+                    padding: "8px 16px", borderRadius: "15px", border: "1px solid #ddd", cursor: "pointer", fontSize: "14px",
+                    backgroundColor: activeFilter === cat ? "#333" : "white",
+                    color: activeFilter === cat ? "white" : "#333",
+                    transition: "0.2s"
+                  }}
+                >
+                  {getCategoryLabel(cat)} ({
+                    cat === 'all'
+                      ? searchResults.length
+                      : searchResults.filter(item => {
+                        // 1. 안전하게 type 꺼내기 (type이 없으면 Type을 찾고, 그래도 없으면 빈 문자열)
+                        const itemType = (item.type || item.Type || "").toLowerCase();
+                        // 2. 비교 대상도 소문자로 바꿔서 비교
+                        return itemType === cat.toLowerCase();
+                      }).length
+                  })
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* 결과 리스트 (필터링된 목록 사용) */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "25px" }}>
-            {searchResults.map((item, index) => (
+            {finalDisplayList.map((item, index) => (
               <div key={index} style={{ border: "1px solid #eee", borderRadius: "12px", padding: "15px", textAlign: "center" }}>
                 <img src={item.imageUrl} style={{ width: "100%", height: "280px", objectFit: "cover", borderRadius: "8px", marginBottom: "15px" }} />
-                <h3 style={{ fontSize: "16px", margin: "0 0 10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</h3>
-                {/* [NEW] 검색 결과에도 작가 표시 */}
-                <p style={{ fontSize: "13px", color: "#666", margin: "0 0 10px" }}>{item.author}</p>
+                <h3 style={{ fontSize: "16px", margin: "0 0 5px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</h3>
+                <p style={{ fontSize: "13px", color: "#666", margin: "0 0 10px" }}>
+                  {item.type === 'game' ? '🎮 ' : (item.type === 'book' ? '📚 ' : '🎬 ')}
+                  {item.author}
+                </p>
                 <button onClick={() => openWriteModal(item)} style={{ width: "100%", padding: "10px", backgroundColor: "#333", color: "white", border: "none", borderRadius: "6px", cursor: "pointer" }}>기록하기 ✍️</button>
               </div>
             ))}

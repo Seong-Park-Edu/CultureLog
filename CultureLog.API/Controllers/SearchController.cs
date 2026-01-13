@@ -2,6 +2,82 @@ using Microsoft.AspNetCore.Mvc;
 using CultureLog.API.Services;
 using CultureLog.API.Models;
 
+namespace CultureLog.API.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class SearchController : ControllerBase
+    {
+        private readonly NaverSearchService _naverService;
+        private readonly TmdbSearchService _tmdbService;
+        private readonly RawgSearchService _rawgService; // [NEW] 게임 담당
+
+        public SearchController(NaverSearchService naverService, TmdbSearchService tmdbService, RawgSearchService rawgService)
+        {
+            _naverService = naverService;
+            _tmdbService = tmdbService;
+            _rawgService = rawgService;
+        }
+
+        // [GET] 검색 (카테고리 파라미터 추가)
+        // 사용법: api/Search/해리포터?category=movie
+        [HttpGet("{query}")]
+        public async Task<IActionResult> Search(string query, [FromQuery] string category = "all")
+        {
+            var results = new List<SearchResult>();
+
+            try
+            {
+                // [NEW] "전체 검색"이면 모든 서비스 동시에 출발! (병렬 처리)
+                if (category == "all")
+                {
+                    // 3개의 작업을 동시에 시작
+                    var movieTask = _tmdbService.SearchAsync(query);
+                    var bookTask = _naverService.SearchAsync(query); // 책+웹툰 포함
+                    var gameTask = _rawgService.SearchAsync(query);
+
+                    // 다 끝날 때까지 기다림 (가장 느린 녀석 기준)
+                    await Task.WhenAll(movieTask, bookTask, gameTask);
+
+                    // 결과 합치기
+                    results.AddRange(movieTask.Result);
+                    results.AddRange(bookTask.Result);
+                    results.AddRange(gameTask.Result);
+
+                    // (웹툰 분류 로직은 여기서 할 필요 없이 프론트가 해도 되지만, 
+                    // 기존 로직 유지를 위해 네이버 결과 중 만화책은 webtoon으로 바꿔줄 수도 있음.
+                    // 일단은 간단하게 섞어서 보냅니다.)
+                }
+                else
+                {
+                    // (특정 카테고리만 콕 집어 요청했을 때 - 기존 로직 유지)
+                    if (category == "movie") results.AddRange(await _tmdbService.SearchAsync(query));
+                    else if (category == "book") results.AddRange(await _naverService.SearchAsync(query));
+                    else if (category == "game") results.AddRange(await _rawgService.SearchAsync(query));
+                    else if (category == "webtoon")
+                    {
+                        var books = await _naverService.SearchAsync(query);
+                        books.ForEach(r => r.Type = "webtoon");
+                        results.AddRange(books);
+                    }
+                }
+
+                return Ok(results);
+            }
+            catch (Exception ex)
+            {
+                // 에러 나도 죽지 말고 빈 리스트 반환 (혹은 에러 메시지)
+                Console.WriteLine(ex.Message);
+                return Ok(new List<SearchResult>());
+            }
+        }
+    }
+}
+
+
+
+
+/*
 // 일꾼 1명에서 여러 명으로 변경
 namespace CultureLog.API.Controllers
 {
@@ -39,6 +115,7 @@ namespace CultureLog.API.Controllers
         }
     }
 }
+*/
 
 /*일꾼 1명 배치
 namespace CultureLog.API.Controllers
