@@ -6,7 +6,11 @@ var builder = WebApplication.CreateBuilder(args);
 // ---------------------------------------------------------
 
 // 1. 컨트롤러 기능 켜기 (이게 있어야 Controllers 폴더를 인식합니다!)
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddNewtonsoftJson(options =>
+{
+    // 순환 참조 문제(A가 B를 가리키고 B가 A를 가리키는 상황) 해결 옵션
+    options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+});
 
 // 2. Swagger(API 문서) 생성 도구 등록
 builder.Services.AddEndpointsApiExplorer();

@@ -1475,5 +1475,55 @@
             }
         };
 
+56. 댓글 기능 추가
+    1단계: Supabase (DB 설계)
+        먼저 댓글을 저장할 새로운 서랍장을 만듭니다.
 
+        Supabase 대시보드 -> Table Editor -> New Table 클릭.
 
+        Name: Comment (대소문자 주의)
+
+        Columns (컬럼 추가):
+
+        id: int8 / Primary Key (기본값)
+
+        created_at: timestamptz / Default: now() (기본값)
+
+        content: text (댓글 내용)
+
+        user_id: uuid (댓글 쓴 사람 ID - 나중에 삭제 권한 체크용)
+
+        user_email: text (화면에 보여줄 작성자 이름/이메일)
+
+        review_id: int8 (★중요: 어떤 감상평에 달린 댓글인지 표시)
+
+        Save 클릭.    
+
+    2단계: 백엔드 모델 만들기 (Comment.cs)
+        이제 C#에게 "댓글은 이렇게 생겼어"라고 알려줍니다. Models 폴더 안에 Comment.cs 파일을 만드세요.
+
+    3단계: 백엔드 컨트롤러 만들기 (CommentController.cs)
+        댓글을 쓰고(POST), 읽고(GET), 지우는(DELETE) 기능을 담당할 직원을 뽑습니다. Controllers 폴더 안에 CommentController.cs 파일을 만드세요.
+
+    4단계: 프론트엔드 화면 수정 (App.jsx)
+        이제 모달 창 아래쪽에 댓글창을 달아줍니다. 코드가 길어지니 추가해야 할 부분을 잘 보고 넣어주세요.
+        1. 상태 변수 추가 (App 함수 안쪽, useState 모여있는 곳에)
+        2. 댓글 불러오기 함수 추가 (handleDelete 함수 밑 쯤에 추가)
+        3. 모달 열 때 댓글도 같이 불러오기 (openDetailModal 함수 수정)
+        4. 모달 UI에 댓글창 붙이기 (<Modal> 태그 안쪽, 버튼들 바로 위에 추가)
+
+    오류 발생. 댓글이 저장 안 됨. => supabase table 설정 2개 바꿈(RLS랑, select for all)
+
+    오류 발생. 댓글이 안 보임 => JONS converter 문제.
+        supabase에서 오는 데이터를 .net 기본 제공 json converter가 읽지를 못함.
+        그래서 라이브러리 깔아주고 Program.cs에서 아래 부분 수정함.
+
+        전
+        builder.Services.AddControllers();
+
+        후
+        builder.Services.AddControllers().AddNewtonsoftJson(options =>
+        {
+            // 순환 참조 문제(A가 B를 가리키고 B가 A를 가리키는 상황) 해결 옵션
+            options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+        });

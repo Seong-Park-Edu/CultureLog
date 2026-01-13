@@ -38,6 +38,10 @@ function App() {
   // [NEW] 검색 카테고리 상태 (기본값: 영화)
   const [searchCategory, setSearchCategory] = useState("movie");
 
+  // [NEW] 댓글 기능 상태
+  const [comments, setComments] = useState([]); // 댓글 목록
+  const [newComment, setNewComment] = useState(""); // 입력 중인 댓글
+
   // [이름 변경] searchCategory -> activeFilter (이제 검색용이 아니라 필터용이니까요!)
   const [activeFilter, setActiveFilter] = useState("all");
 
@@ -179,12 +183,19 @@ function App() {
     setIsEditMode(false); setIsReadOnly(false); setSelectedItem(item); setEditorContent(""); setRating(5); setIsPublic(true); setIsModalOpen(true);
   };
 
+  // 상세 모달 열기
   const openDetailModal = (review) => {
     setSelectedItem(review); setEditorContent(review.reviewContent); setRating(review.rating); setIsPublic(review.isPublic); setIsModalOpen(true);
+
+    // [NEW] 댓글 불러오기 실행!
+    setComments([]); // 기존 댓글 잔상 지우기
+    fetchComments(review.id);
+
     if (activeTab === "public_library") { setIsReadOnly(true); setIsEditMode(false); }
     else { setIsReadOnly(false); setIsEditMode(true); }
   };
 
+  // 저장, 수정, 삭제
   const handleSave = async () => { /* 내용 생략 (기존 동일) */
     if (editorContent.replace(/<(.|\n)*?>/g, '').trim().length === 0) { alert("내용 입력!"); return; }
     const reviewData = { title: selectedItem.title, imageUrl: selectedItem.imageUrl, type: selectedItem.type, externalId: selectedItem.externalId, reviewContent: editorContent, rating: rating, isPublic: isPublic, userId: session?.user?.id, author: selectedItem.author || "" };
@@ -199,6 +210,53 @@ function App() {
     if (!window.confirm("삭제하시겠습니까?")) return;
     try { const response = await fetch(`${API_URL}/api/Review/${selectedItem.id}`, { method: 'DELETE' }); if (response.ok) { alert("삭제됨"); closeModalAndRefresh(); } } catch (error) { console.error(error); }
   };
+
+  // 댓글 목록 가져오기
+  const fetchComments = async (reviewId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/Comment/review/${reviewId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setComments(data);
+      }
+    } catch (error) { console.error("댓글 로딩 실패", error); }
+  };
+
+  // 댓글 등록하기
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+    if (!session) { alert("로그인이 필요합니다."); return; }
+
+    const commentData = {
+      reviewId: selectedItem.id,
+      content: newComment,
+      userId: session.user.id,
+      userEmail: session.user.email
+    };
+
+    try {
+      const response = await fetch(`${API_URL}/api/Comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(commentData),
+      });
+
+      if (response.ok) {
+        setNewComment(""); // 입력창 비우기
+        fetchComments(selectedItem.id); // 목록 갱신
+      }
+    } catch (error) { alert("댓글 등록 실패"); }
+  };
+
+  // 댓글 삭제하기
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm("댓글을 삭제할까요?")) return;
+    try {
+      await fetch(`${API_URL}/api/Comment/${commentId}`, { method: 'DELETE' });
+      fetchComments(selectedItem.id); // 목록 갱신
+    } catch (error) { console.error(error); }
+  };
+
   const sendRequest = async (url, method, body, successMsg) => {
     try { const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); if (response.ok) { alert(successMsg); closeModalAndRefresh(); } else alert("실패"); } catch (error) { alert("에러"); }
   };
@@ -241,8 +299,9 @@ function App() {
 
   return (
     <div style={{ padding: "20px", maxWidth: "800px", margin: "0 auto", fontFamily: "sans-serif", paddingBottom: "100px" }}>
-      <h1 style={{ textAlign: "center", color: "#333", marginBottom: "30px" }}>🎬 Culture Logs</h1>
+      <h1 style={{ textAlign: "center", color: "#333", marginBottom: "30px" }}>🎬 내 문화생활 기록장</h1>
 
+      {/* 상단 탭 버튼 */}
       <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginBottom: "30px" }}>
         {["search", "public_library", "my_library"].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
@@ -254,14 +313,14 @@ function App() {
         ))}
       </div>
 
-      {/* 1. API 검색 화면 */}
+      {/* 1. 검색 화면 */}
       {activeTab === "search" && (
         <>
-          {/* 검색창 (카테고리 선택 없이 바로 검색) */}
+          {/* 검색창 */}
           <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
             <input
               type="text"
-              placeholder="영화, 책, 게임 제목을 검색해보세요..." // 문구 변경
+              placeholder="영화, 책, 게임 제목을 검색해보세요..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -270,13 +329,13 @@ function App() {
             <button onClick={handleSearch} style={{ padding: "12px 24px", backgroundColor: "#333", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>검색</button>
           </div>
 
-          {/* [위치 변경] 검색 결과가 있을 때만 필터 탭 보여주기 */}
+          {/* 검색 결과 필터 탭 (결과가 있을 때만 표시) */}
           {searchResults.length > 0 && (
             <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginBottom: "20px" }}>
               {['all', 'movie', 'book', 'game'].map((cat) => (
                 <button
                   key={cat}
-                  onClick={() => setActiveFilter(cat)} // 클릭하면 필터만 변경 (API 요청 X)
+                  onClick={() => setActiveFilter(cat)}
                   style={{
                     padding: "8px 16px", borderRadius: "15px", border: "1px solid #ddd", cursor: "pointer", fontSize: "14px",
                     backgroundColor: activeFilter === cat ? "#333" : "white",
@@ -287,26 +346,21 @@ function App() {
                   {getCategoryLabel(cat)} ({
                     cat === 'all'
                       ? searchResults.length
-                      : searchResults.filter(item => {
-                        // 1. 안전하게 type 꺼내기 (type이 없으면 Type을 찾고, 그래도 없으면 빈 문자열)
-                        const itemType = (item.type || item.Type || "").toLowerCase();
-                        // 2. 비교 대상도 소문자로 바꿔서 비교
-                        return itemType === cat.toLowerCase();
-                      }).length
+                      : searchResults.filter(item => (item.type || item.Type || "").toLowerCase() === cat.toLowerCase()).length
                   })
                 </button>
               ))}
             </div>
           )}
 
-          {/* 결과 리스트 (필터링된 목록 사용) */}
+          {/* 검색 결과 리스트 */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "25px" }}>
             {finalDisplayList.map((item, index) => (
               <div key={index} style={{ border: "1px solid #eee", borderRadius: "12px", padding: "15px", textAlign: "center" }}>
                 <img src={item.imageUrl} style={{ width: "100%", height: "280px", objectFit: "cover", borderRadius: "8px", marginBottom: "15px" }} />
                 <h3 style={{ fontSize: "16px", margin: "0 0 5px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</h3>
                 <p style={{ fontSize: "13px", color: "#666", margin: "0 0 10px" }}>
-                  {item.type === 'game' ? '🎮 ' : (item.type === 'book' ? '📚 ' : '🎬 ')}
+                  {item.type === 'game' ? '🎮 ' : (item.type === 'book' || item.type === 'webtoon' ? '📚 ' : '🎬 ')}
                   {item.author}
                 </p>
                 <button onClick={() => openWriteModal(item)} style={{ width: "100%", padding: "10px", backgroundColor: "#333", color: "white", border: "none", borderRadius: "6px", cursor: "pointer" }}>기록하기 ✍️</button>
@@ -316,12 +370,11 @@ function App() {
         </>
       )}
 
-      {/* 2. 서재 화면 (필터 기능 추가됨!) */}
+      {/* 2. 서재 화면 (내 서재 & 모두의 서재) */}
       {(activeTab === "public_library" || activeTab === "my_library") && (
         <>
-          {/* [NEW] 필터 및 검색바 영역 */}
+          {/* 필터 바 (검색/장르/별점) */}
           <div style={{ backgroundColor: "#f8f9fa", padding: "15px", borderRadius: "12px", marginBottom: "20px", display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
-            {/* 검색어 입력 */}
             <input
               type="text"
               placeholder="내 서재에서 검색..."
@@ -329,15 +382,11 @@ function App() {
               onChange={(e) => setFilterKeyword(e.target.value)}
               style={{ flex: 1, minWidth: "200px", padding: "10px", borderRadius: "8px", border: "1px solid #ddd" }}
             />
-
-            {/* 장르 선택 */}
             <select value={filterGenre} onChange={(e) => setFilterGenre(e.target.value)} style={{ padding: "10px", borderRadius: "8px", border: "1px solid #ddd" }}>
               {getAvailableGenres().map(g => (
                 <option key={g} value={g}>{g === "All" ? "모든 장르" : g}</option>
               ))}
             </select>
-
-            {/* 별점 선택 */}
             <select value={filterRating} onChange={(e) => setFilterRating(e.target.value)} style={{ padding: "10px", borderRadius: "8px", border: "1px solid #ddd" }}>
               <option value="All">모든 별점</option>
               <option value="5">⭐⭐⭐⭐⭐ (5)</option>
@@ -369,13 +418,11 @@ function App() {
                       {review.title}
                       {!review.isPublic && activeTab === "my_library" && <span style={{ fontSize: "14px", marginLeft: "5px" }}>🔒</span>}
                     </h3>
-                    {/* [NEW] 작가/개봉일 표시 */}
                     <p style={{ margin: "0 0 5px", fontSize: "13px", color: "#555", fontWeight: "bold" }}>
-                      {review.type === 'book' ? '✍️ ' : '📅 '}
+                      {review.type === 'game' ? '🎮 ' : (review.type === 'book' || review.type === 'webtoon' ? '✍️ ' : '📅 ')}
                       {review.author}
                     </p>
                     <div style={{ color: "#f1c40f", fontSize: "14px" }}>{"★".repeat(review.rating)}</div>
-                    <p style={{ margin: "5px 0", fontSize: "12px", color: "#666", backgroundColor: "#eee", display: "inline-block", padding: "2px 6px", borderRadius: "4px" }}>{review.type}</p>
                     <p style={{ margin: "10px 0 0", fontSize: "12px", color: "#aaa" }}>by {review.userId ? review.userId.substring(0, 8) + "..." : "익명"}</p>
                   </div>
                 </div>
@@ -392,7 +439,7 @@ function App() {
         <button onClick={handleLogout} style={{ padding: "8px 16px", backgroundColor: "#999", color: "white", border: "none", borderRadius: "20px", cursor: "pointer", fontSize: "13px" }}>로그아웃</button>
       </div>
 
-      {/* 모달 창 (기존과 동일하여 내용 생략 - 전체 코드 복사시 포함됨) */}
+      {/* 모달 창 (상세/수정/작성) */}
       <Modal isOpen={isModalOpen} onRequestClose={() => setIsModalOpen(false)} style={customModalStyles} contentLabel="리뷰 모달">
         {selectedItem && (
           <>
@@ -401,12 +448,57 @@ function App() {
               {!isReadOnly && (<label style={{ display: "flex", alignItems: "center", cursor: "pointer", fontSize: "14px" }}><input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} style={{ width: "18px", height: "18px", marginRight: "5px" }} />전체 공개</label>)}
             </div>
             <h3 style={{ marginTop: 0, color: "#555" }}>{selectedItem.title}</h3>
+
             <div style={{ marginBottom: "20px" }}>
               <select value={rating} onChange={(e) => setRating(Number(e.target.value))} disabled={isReadOnly} style={{ padding: "5px", fontSize: "16px" }}><option value="5">⭐⭐⭐⭐⭐</option><option value="4">⭐⭐⭐⭐</option><option value="3">⭐⭐⭐</option><option value="2">⭐⭐</option><option value="1">⭐</option></select>
             </div>
-            <div style={{ flex: 1, marginBottom: "50px", overflowY: "auto" }}>
-              {isReadOnly ? (<div style={{ lineHeight: "1.6", fontSize: "16px", color: "#333" }} dangerouslySetInnerHTML={{ __html: editorContent }} />) : (<ReactQuill theme="snow" value={editorContent} onChange={setEditorContent} style={{ height: "250px" }} placeholder="내용을 입력하세요..." />)}
+
+            {/* 에디터 / 뷰어 */}
+            <div style={{ flex: 1, marginBottom: "20px", overflowY: "auto", minHeight: "200px" }}>
+              {isReadOnly ? (<div style={{ lineHeight: "1.6", fontSize: "16px", color: "#333" }} dangerouslySetInnerHTML={{ __html: editorContent }} />) : (<ReactQuill theme="snow" value={editorContent} onChange={setEditorContent} style={{ height: "200px" }} placeholder="내용을 입력하세요..." />)}
             </div>
+
+            {/* [NEW] 댓글 섹션 */}
+            <div style={{ marginTop: "30px", borderTop: "1px solid #eee", paddingTop: "20px" }}>
+              <h4 style={{ margin: "0 0 15px", color: "#333" }}>💬 댓글 ({comments.length})</h4>
+
+              {/* 댓글 목록 */}
+              <div style={{ maxHeight: "150px", overflowY: "auto", marginBottom: "15px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                {comments.length === 0 && <p style={{ color: "#999", fontSize: "13px" }}>첫 번째 댓글을 남겨보세요!</p>}
+
+                {comments.map((c) => (
+                  <div key={c.id} style={{ backgroundColor: "#f9f9f9", padding: "10px", borderRadius: "8px", fontSize: "14px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px" }}>
+                      <span style={{ fontWeight: "bold", color: "#555" }}>{c.userEmail.split('@')[0]}</span>
+                      <span style={{ fontSize: "12px", color: "#aaa" }}>
+                        {new Date(c.createdAt).toLocaleDateString()}
+                        {session && session.user.id === c.userId && (
+                          <span onClick={() => handleDeleteComment(c.id)} style={{ marginLeft: "8px", cursor: "pointer", color: "#ff4d4d" }}>x</span>
+                        )}
+                      </span>
+                    </div>
+                    <div style={{ color: "#333" }}>{c.content}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* 댓글 입력창 */}
+              {session && (
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <input
+                    type="text"
+                    placeholder="따뜻한 댓글을 남겨주세요..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
+                    style={{ flex: 1, padding: "10px", borderRadius: "6px", border: "1px solid #ddd" }}
+                  />
+                  <button onClick={handleAddComment} style={{ padding: "10px 15px", backgroundColor: "#333", color: "white", border: "none", borderRadius: "6px", cursor: "pointer" }}>등록</button>
+                </div>
+              )}
+            </div>
+
+            {/* 모달 하단 버튼 */}
             <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "20px" }}>
               <button onClick={() => setIsModalOpen(false)} style={{ padding: "10px 20px", borderRadius: "6px", border: "1px solid #ddd", backgroundColor: "white", cursor: "pointer" }}>{isReadOnly ? "닫기" : "취소"}</button>
               {!isReadOnly && (isEditMode ? (<><button onClick={handleDelete} style={{ padding: "10px 20px", borderRadius: "6px", border: "none", backgroundColor: "#ff4d4d", color: "white", fontWeight: "bold", cursor: "pointer" }}>삭제</button><button onClick={handleUpdate} style={{ padding: "10px 20px", borderRadius: "6px", border: "none", backgroundColor: "#007AFF", color: "white", fontWeight: "bold", cursor: "pointer" }}>수정 완료</button></>) : (<button onClick={handleSave} style={{ padding: "10px 20px", borderRadius: "6px", border: "none", backgroundColor: "#007AFF", color: "white", fontWeight: "bold", cursor: "pointer" }}>저장하기</button>))}
