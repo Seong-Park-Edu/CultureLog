@@ -547,44 +547,47 @@ function App() {
             </div>
 
             {/* [NEW] 댓글 섹션 */}
-            <div style={{ marginTop: "30px", borderTop: "1px solid #eee", paddingTop: "20px" }}>
-              <h4 style={{ margin: "0 0 15px", color: "#333" }}>💬 댓글 ({comments.length})</h4>
+            {/* [수정] isReadOnly(읽기 모드)일 때만 댓글 창이 나옵니다! */}
+            {isReadOnly && (
+              <div style={{ marginTop: "30px", borderTop: "1px solid #eee", paddingTop: "20px" }}>
+                <h4 style={{ margin: "0 0 15px", color: "#333" }}>💬 댓글 ({comments.length})</h4>
 
-              {/* 댓글 목록 */}
-              <div style={{ maxHeight: "150px", overflowY: "auto", marginBottom: "15px", display: "flex", flexDirection: "column", gap: "10px" }}>
-                {comments.length === 0 && <p style={{ color: "#999", fontSize: "13px" }}>첫 번째 댓글을 남겨보세요!</p>}
+                {/* 댓글 목록 */}
+                <div style={{ maxHeight: "150px", overflowY: "auto", marginBottom: "15px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {comments.length === 0 && <p style={{ color: "#999", fontSize: "13px" }}>첫 번째 댓글을 남겨보세요!</p>}
 
-                {comments.map((c) => (
-                  <div key={c.id} style={{ backgroundColor: "#f9f9f9", padding: "10px", borderRadius: "8px", fontSize: "14px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px" }}>
-                      <span style={{ fontWeight: "bold", color: "#555" }}>{c.userEmail.split('@')[0]}</span>
-                      <span style={{ fontSize: "12px", color: "#aaa" }}>
-                        {new Date(c.createdAt).toLocaleDateString()}
-                        {session && session.user.id === c.userId && (
-                          <span onClick={() => handleDeleteComment(c.id)} style={{ marginLeft: "8px", cursor: "pointer", color: "#ff4d4d" }}>x</span>
-                        )}
-                      </span>
+                  {comments.map((c) => (
+                    <div key={c.id} style={{ backgroundColor: "#f9f9f9", padding: "10px", borderRadius: "8px", fontSize: "14px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px" }}>
+                        <span style={{ fontWeight: "bold", color: "#555" }}>{c.userEmail ? c.userEmail.split('@')[0] : "익명"}</span>
+                        <span style={{ fontSize: "12px", color: "#aaa" }}>
+                          {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : ""}
+                          {session && session.user.id === c.userId && (
+                            <span onClick={() => handleDeleteComment(c.id)} style={{ marginLeft: "8px", cursor: "pointer", color: "#ff4d4d" }}>x</span>
+                          )}
+                        </span>
+                      </div>
+                      <div style={{ color: "#333" }}>{c.content}</div>
                     </div>
-                    <div style={{ color: "#333" }}>{c.content}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* 댓글 입력창 */}
-              {session && (
-                <div style={{ display: "flex", gap: "10px" }}>
-                  <input
-                    type="text"
-                    placeholder="따뜻한 댓글을 남겨주세요..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
-                    style={{ flex: 1, padding: "10px", borderRadius: "6px", border: "1px solid #ddd" }}
-                  />
-                  <button onClick={handleAddComment} style={{ padding: "10px 15px", backgroundColor: "#333", color: "white", border: "none", borderRadius: "6px", cursor: "pointer" }}>등록</button>
+                  ))}
                 </div>
-              )}
-            </div>
+
+                {/* 댓글 입력창 */}
+                {session && (
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <input
+                      type="text"
+                      placeholder="따뜻한 댓글을 남겨주세요..."
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
+                      style={{ flex: 1, padding: "10px", borderRadius: "6px", border: "1px solid #ddd" }}
+                    />
+                    <button onClick={handleAddComment} style={{ padding: "10px 15px", backgroundColor: "#333", color: "white", border: "none", borderRadius: "6px", cursor: "pointer" }}>등록</button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* 모달 하단 버튼 */}
             <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "20px" }}>
