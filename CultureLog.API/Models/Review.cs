@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using Supabase.Postgrest.Attributes; // Supabase용 명찰
 using Supabase.Postgrest.Models;     // Supabase 기본 모델
 

@@ -1527,3 +1527,128 @@
             // 순환 참조 문제(A가 B를 가리키고 B가 A를 가리키는 상황) 해결 옵션
             options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
         });
+
+57. 감상문 무한 스크롤 기능
+    딱 두 파일만 건드리면 됩니다.
+    백엔드(ReviewController.cs): "몇 페이지부터 몇 개 줘"라고 요청받을 준비 하기
+    프론트엔드(App.jsx 또는 리뷰 목록 컴포넌트): 스크롤 내리면 "다음 페이지 줘"라고 요청하기
+
+    1단계: 백엔드 (C#) 수정하기
+        ReviewController.cs 파일을 열어서 리뷰 목록을 가져오는 메서드(예: GetReviews)를 아래처럼 바꿔주세요.
+
+        핵심 변경점:
+
+        [FromQuery]: 주소창(URL) 뒤에 붙은 ?page=1 같은 값을 받아오는 문법입니다.
+
+        .Range(start, end): Supabase에게 "전부 다 말고, 여기서부터 저기까지만 줘"라고 시키는 함수입니다.
+
+            public async Task<IActionResult> GetReviews(
+                [FromQuery] string? userId,
+                [FromQuery] int page = 1,      // [추가] 몇 번째 페이지인지
+                [FromQuery] int pageSize = 10  // [추가] 몇 개 가져올지
+            )
+            {
+
+                // ---------------------------------------------------------
+                // 3. [★ 여기가 추가된 부분] 페이지네이션 (자르기)
+                // ---------------------------------------------------------
+                // 전체 리스트 중에서 (현재 페이지 - 1) * 10개만큼 건너뛰고(Skip)
+                // 그 다음 10개만 가져옵니다(Take).
+                var paginatedReviews = filteredReviews
+                    .Skip((page - 1) * pageSize) 
+                    .Take(pageSize); 
+                // ---------------------------------------------------------
+
+                return Ok(result);
+            }
+
+        2. 문법 및 로직 설명 (소프트웨어적 관점)
+        이 코드는 **"전체 요리(데이터)를 다 만든 다음, 접시(페이지)에 담을 때 조금씩 덜어내는 방식"**입니다.
+
+        [FromQuery] int page = 1:
+
+        URL 쿼리 스트링(?page=1)에서 값을 받아옵니다. 값이 없으면 기본값 1을 씁니다.
+
+        .Skip((page - 1) * pageSize):
+
+        문법: 리스트의 앞부분을 건너뜁니다.
+
+        원리: 2페이지라면 (2-1)*10 = 10개를 건너뛰어야 11번째부터 보여줄 수 있겠죠?
+
+        .Take(pageSize):
+
+        문법: 리스트에서 지정한 개수만큼만 선택합니다.
+
+        원리: 건너뛴 지점부터 딱 10개만 집어옵니다.
+
+    2단계: 프론트엔드 (React) 수정하기
+        이제 리액트에서 스크롤이 바닥에 닿았을 때 page 숫자를 하나씩 올리면서 데이터를 요청하면 됩니다.
+
+        State(상태) 추가: 페이지 번호, 로딩 중인지 여부 등을 저장.
+
+        데이터 가져오기 (fetchReviews) 로직 변경: 한 번에 다 가져오기 → "페이지별로 잘라서 가져오기(이어 붙이기)".
+
+        UI 추가: 리스트 맨 아래에 "감시용 투명 div" 추가.
+
+        ✅ 적용 순서 요약
+        맨 위 import에 useRef, useCallback 추가.
+
+        useState에 page, loading, hasMore, observerTarget 추가.
+
+        fetchReviews 함수를 페이지네이션 버전으로 교체.
+
+        useEffect 2개 (탭 변경 시 초기화, 스크롤 감시) 교체 및 추가.
+
+        JSX 서재 리스트 맨 아래에 <div ref={observerTarget} ... /> 추가.
+
+58. 대시보드 만들기
+    1단계: 백엔드 (C#) - 통계 데이터 준비하기
+        서버가 "전체 리뷰 다 줄게, 네가 알아서 세어봐"라고 하면 데이터 낭비가 심해. 서버가 미리 계산해서 **"영화 5개, 책 3개입니다"**라고 요약된 숫자만 주는 게 정석이야.
+
+        새로운 컨트롤러 DashboardController.cs를 만들자.
+
+    2단계: 프론트엔드 (React) - 차트 도구 설치
+        npm install recharts
+
+    3단계: 프론트엔드 (React) - 대시보드 화면 만들기
+        Dashboard.jsx 파일을 새로 만들어서 대시보드 관련 로직과 UI를 싹 몰아넣자. 
+        App.jsx는 그저 "대시보드 탭이면 저 녀석을 보여줘!"라고 명령만 내리면 돼.
+            1단계: Dashboard.jsx 파일 생성
+                src 폴더 안에 Dashboard.jsx 파일을 만들고 아래 코드를 복사해 넣어줘.
+
+                2단계: App.jsx 수정 (가볍게 만들기)
+                이제 App.jsx에서 Dashboard 컴포넌트를 불러와서 쓰기만 하면 돼.
+
+            1. 상단 import 추가
+                import Dashboard from './Dashboard'; // 방금 만든 파일 불러오기
+                (이전에 추가했던 recharts 관련 import들은 App.jsx에서 지워도 돼! 이제 Dashboard.jsx가 관리하니까.)
+
+            2. 탭 메뉴 버튼 추가
+                {/* 기존 탭 버튼들 있는 곳에 추가 */}
+                <button 
+                onClick={() => setActiveTab("dashboard")}
+                style={{ 
+                    padding: "10px 15px", 
+                    borderRadius: "20px", 
+                    border: "none", 
+                    cursor: "pointer", 
+                    fontWeight: "bold", 
+                    backgroundColor: activeTab === "dashboard" ? "#007AFF" : "#eee", 
+                    color: activeTab === "dashboard" ? "white" : "#555" 
+                }}
+                >
+                📊 대시보드
+                </button>
+            3. 화면 렌더링 부분 추가 App.jsx의 return 문 안쪽, 다른 탭들이 조건부 렌더링되는 곳에 아래 코드를 한 줄만 딱 넣으면 끝이야.
+                {/* 1. 검색 화면 ... */}
+                {/* 2. 서재 화면 ... */}
+
+                {/* 3. [NEW] 대시보드 화면 */}
+                {activeTab === "dashboard" && (
+                    <Dashboard session={session} />
+                )}
+
+59. 대시보드 오류 수정
+    데이터 베이스에 날짜가 0001-00-00으로 찍혔음.
+    ReviewController.cs에서 CreateReview 메서드에 review.CreatedAt = DateTime.Now; 넣어줌.
+    

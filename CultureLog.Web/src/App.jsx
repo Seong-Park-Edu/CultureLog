@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Modal from 'react-modal';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import { createClient } from '@supabase/supabase-js';
+import Dashboard from './Dashboard';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -54,6 +55,12 @@ function App() {
   const [rating, setRating] = useState(5);
   const [isPublic, setIsPublic] = useState(true);
 
+  // [NEW] 무한 스크롤용 상태들
+  const [page, setPage] = useState(1);        // 현재 페이지 번호
+  const [loading, setLoading] = useState(false); // 로딩 중인지?
+  const [hasMore, setHasMore] = useState(true);  // 더 가져올 데이터가 남았는지?
+  const observerTarget = useRef(null); // 바닥 감시용 CCTV
+
   const API_URL = import.meta.env.VITE_API_URL;
 
   // 로그인 체크
@@ -97,25 +104,75 @@ function App() {
     } catch (error) { alert("검색 실패!"); }
   };
 
-  // 전체 리뷰 가져오기
-  const fetchReviews = async () => {
-    const myId = session?.user?.id || "";
-    try {
-      const response = await fetch(`${API_URL}/api/Review?userId=${myId}`);
-      const data = await response.json();
-      setAllReviews(data);
-    } catch (error) { console.error(error); }
-  };
+  // [변경] 전체 리뷰 가져오기 (무한 스크롤 적용)
+  const fetchReviews = useCallback(async (pageNumber) => {
+    // 검색 탭일 땐 실행 안 함
+    if (activeTab === "search") return;
 
+    const myId = session?.user?.id || "";
+    setLoading(true);
+
+    try {
+      // 백엔드에 page와 pageSize를 같이 요청
+      const response = await fetch(`${API_URL}/api/Review?userId=${myId}&page=${pageNumber}&pageSize=10`);
+      const data = await response.json();
+
+      if (data.length === 0) {
+        setHasMore(false); // 더 이상 데이터 없음
+      } else {
+        setAllReviews(prev => {
+          // 1페이지면 그냥 덮어쓰고, 아니면 뒤에 이어 붙이기
+          if (pageNumber === 1) return data;
+
+          // [중복 방지 팁] 혹시 모를 중복 데이터 제거 (선택 사항)
+          const newIds = new Set(data.map(d => d.id));
+          const filteredPrev = prev.filter(p => !newIds.has(p.id));
+          return [...filteredPrev, ...data];
+        });
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }, [API_URL, session, activeTab]); // activeTab이 바뀌면 함수도 갱신
+
+  // [변경] 탭이 바뀌면 리스트와 페이지를 초기화하고 1페이지를 불러옴
   useEffect(() => {
     if (activeTab === "public_library" || activeTab === "my_library") {
-      fetchReviews();
-      // 탭이 바뀔 때 필터 초기화 (선택 사항)
-      setFilterKeyword("");
-      setFilterGenre("All");
-      setFilterRating("All");
+      setAllReviews([]); // 리스트 비우기
+      setPage(1);        // 1페이지로 리셋
+      setHasMore(true);  // 더 있음 상태로 리셋
+      setFilterKeyword(""); // 필터 초기화
+
+      // 1페이지 로딩 시작
+      fetchReviews(1);
     }
-  }, [activeTab, session]);
+  }, [activeTab, session]); // fetchReviews는 의존성에서 빼는 게 무한 루프 방지에 좋음 (여기선 로직상 분리)
+
+
+  // [NEW] 스크롤 바닥 감시 (CCTV)
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // 바닥이 보이고(isIntersecting), 데이터가 남았고(hasMore), 로딩 중이 아니면(!loading)
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          setPage(prev => {
+            const nextPage = prev + 1;
+            fetchReviews(nextPage); // 다음 페이지 호출
+            return nextPage;
+          });
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, loading, fetchReviews]);
 
   // [NEW] ★ 핵심 로직: 현재 탭과 필터 조건에 맞는 목록만 걸러내기
   const getFilteredReviews = () => {
@@ -301,14 +358,28 @@ function App() {
     <div style={{ padding: "20px", maxWidth: "800px", margin: "0 auto", fontFamily: "sans-serif", paddingBottom: "100px" }}>
       <h1 style={{ textAlign: "center", color: "#333", marginBottom: "30px" }}>🎬 내 문화생활 기록장</h1>
 
-      {/* 상단 탭 버튼 */}
-      <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginBottom: "30px" }}>
-        {["search", "public_library", "my_library"].map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)}
-            style={{ padding: "10px 15px", borderRadius: "20px", border: "none", cursor: "pointer", fontWeight: "bold", backgroundColor: activeTab === tab ? "#007AFF" : "#eee", color: activeTab === tab ? "white" : "#555" }}>
+      {/* 상단 탭 버튼 (대시보드 포함) */}
+      <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginBottom: "30px", flexWrap: "wrap" }}>
+        {/* 배열에 "dashboard" 추가 */}
+        {["search", "public_library", "my_library", "dashboard"].map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: "10px 15px",
+              borderRadius: "20px",
+              border: "none",
+              cursor: "pointer",
+              fontWeight: "bold",
+              // activeTab 상태에 따라 색상 자동 변경됨
+              backgroundColor: activeTab === tab ? "#007AFF" : "#eee",
+              color: activeTab === tab ? "white" : "#555"
+            }}
+          >
             {tab === "search" && "🔍 검색"}
             {tab === "public_library" && "🌏 모두의 서재"}
             {tab === "my_library" && "📚 내 서재"}
+            {tab === "dashboard" && "📊 대시보드"} {/* 라벨 추가 */}
           </button>
         ))}
       </div>
@@ -430,7 +501,24 @@ function App() {
               </div>
             ))}
           </div>
+          {/* ▼▼▼ [NEW] 여기에 추가하세요! ▼▼▼ */}
+          {/* 무한 스크롤 감시용 투명 div */}
+          {(activeTab === "public_library" || activeTab === "my_library") && (
+            <div
+              ref={observerTarget}
+              style={{ height: '50px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '20px' }}
+            >
+              {loading && <p style={{ color: '#999' }}>   </p>}
+              {!hasMore && displayReviews.length > 0 && <p style={{ color: '#ddd' }}>마지막 기록입니다.</p>}
+            </div>
+          )}
+          {/* ▲▲▲ 여기까지 ▲▲▲ */}
         </>
+      )}
+
+      {/* 3. [NEW] 대시보드 화면 */}
+      {activeTab === "dashboard" && (
+        <Dashboard session={session} />
       )}
 
       {/* 하단 로그아웃 */}

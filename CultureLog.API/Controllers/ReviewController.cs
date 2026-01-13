@@ -28,6 +28,7 @@ namespace CultureLog.API.Controllers
 
             // 2. Supabase에 저장 (Insert)
             // C# 객체를 DB에 넣으면, 방금 생성된 데이터(ID 포함)를 다시 돌려줍니다.
+            review.CreatedAt = DateTime.Now;
             var response = await _supabaseClient.From<Review>().Insert(review);
 
             var newReview = response.Models.FirstOrDefault();
@@ -53,7 +54,11 @@ namespace CultureLog.API.Controllers
         // [GET] 목록 조회 (필터링 추가)
         // 사용법: api/Review?userId=내아이디
         [HttpGet]
-        public async Task<IActionResult> GetReviews([FromQuery] string? userId)
+        public async Task<IActionResult> GetReviews(
+            [FromQuery] string? userId,
+            [FromQuery] int page = 1,      // [추가] 몇 번째 페이지인지
+            [FromQuery] int pageSize = 10  // [추가] 몇 개 가져올지
+        )
         {
             var response = await _supabaseClient
                 .From<Review>()
@@ -68,6 +73,16 @@ namespace CultureLog.API.Controllers
             var filteredReviews = allReviews.Where(r =>
                 r.IsPublic == true || (userId != null && r.UserId == userId)
             );
+
+            // ---------------------------------------------------------
+            // 3. [★ 여기가 추가된 부분] 페이지네이션 (자르기)
+            // ---------------------------------------------------------
+            // 전체 리스트 중에서 (현재 페이지 - 1) * 10개만큼 건너뛰고(Skip)
+            // 그 다음 10개만 가져옵니다(Take).
+            var paginatedReviews = filteredReviews
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize);
+            // ---------------------------------------------------------
 
             // [★해결 핵심] 3. 안전한 데이터로 포장하기 (DTO 변환)
             // Supabase의 복잡한 속성을 떼어내고 순수 데이터만 담습니다.
